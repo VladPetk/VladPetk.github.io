@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCST Architecture — Interactive Diagram</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0d0f12;
+    --bg-secondary: #13161b;
+    --bg-card: #1a1d24;
+    --bg-card-hover: #22262f;
+    --border-default: #2a2e38;
+    --border-hover: #3d4250;
+    --text-primary: #e8eaed;
+    --text-secondary: #9ba1ad;
+    --text-muted: #636a78;
+    --accent-teal: #5cd6c8;
+    --accent-teal-dim: rgba(92, 214, 200, 0.15);
+    --accent-blue: #6fa3f7;
+    --accent-blue-dim: rgba(111, 163, 247, 0.15);
+    --accent-red: #f07070;
+    --accent-red-dim: rgba(240, 112, 112, 0.12);
+    --accent-green: #7ecf72;
+    --accent-green-dim: rgba(126, 207, 114, 0.12);
+    --accent-gray: #7c8290;
+    --accent-gray-dim: rgba(124, 130, 144, 0.12);
+    --accent-amber: #e8b960;
+    --arrow-default: #4a4f5c;
+    --arrow-highlight: #6fa3f7;
+    --glow-teal: 0 0 20px rgba(92,214,200,0.25);
+    --glow-blue: 0 0 20px rgba(111,163,247,0.25);
+    --glow-red: 0 0 20px rgba(240,112,112,0.25);
+    --glow-green: 0 0 20px rgba(126,207,114,0.2);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(92,214,200,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,214,200,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrapper {
+    position: relative;
+    z-index: 1;
+    padding: 32px 40px 60px;
+  }
+
+  header {
+    margin-bottom: 28px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+
+  header .subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .diagram-container {
+    position: relative;
+    width: 820px;
+    height: 738px;
+    margin: 0 auto;
+  }
+
+  /* ── SVG Canvas ── */
+  svg.diagram {
+    width: 820px;
+    height: 738px;
+    display: block;
+  }
+
+  /* ── Nodes ── */
+  .node {
+    cursor: pointer;
+    transition: filter 0.25s ease, opacity 0.25s ease;
+  }
+
+  .node rect, .node path.diamond {
+    transition: fill 0.2s ease, stroke 0.2s ease, filter 0.25s ease;
+  }
+
+  .node text {
+    font-family: 'DM Sans', sans-serif;
+    fill: var(--text-primary);
+    pointer-events: none;
+  }
+
+  .node:hover rect, .node:hover path.diamond {
+    filter: brightness(1.3);
+  }
+
+  /* ── Arrows ── */
+  .arrow {
+    transition: stroke 0.3s ease, opacity 0.3s ease, stroke-width 0.3s ease;
+  }
+
+  .arrow line, .arrow path, .arrow polyline {
+    transition: stroke 0.3s ease, opacity 0.3s ease, stroke-width 0.3s ease;
+  }
+
+  .arrow polygon {
+    transition: fill 0.3s ease, opacity 0.3s ease;
+  }
+
+  /* Dimming when hovering */
+  .diagram.has-hover .arrow:not(.highlight) {
+    opacity: 0.12;
+  }
+  .diagram.has-hover .node:not(.highlight-node) {
+    opacity: 0.35;
+  }
+  .diagram.has-hover .zone-bg:not(.highlight-zone) {
+    opacity: 0.25;
+  }
+
+  .arrow.highlight line, .arrow.highlight path, .arrow.highlight polyline {
+    stroke: var(--arrow-highlight) !important;
+    stroke-width: 2.2px;
+  }
+  .arrow.highlight polygon {
+    fill: var(--arrow-highlight) !important;
+    stroke: var(--arrow-highlight) !important;
+  }
+
+  /* ── Zone backgrounds ── */
+  .zone-bg {
+    transition: opacity 0.3s ease, stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease;
+    cursor: pointer;
+    pointer-events: all;
+  }
+
+  .zone-bg.highlight-zone {
+    opacity: 1 !important;
+    stroke-width: 2.5px;
+    filter: brightness(2) drop-shadow(0 0 12px currentColor);
+  }
+
+  .zone-bg.highlight-zone[data-zone="discriminator"] {
+    stroke: rgba(240,112,112,0.7) !important;
+    filter: brightness(2) drop-shadow(0 0 14px rgba(240,112,112,0.4));
+  }
+
+  .zone-bg.highlight-zone[data-zone="decoder"] {
+    stroke: rgba(126,207,114,0.7) !important;
+    filter: brightness(2) drop-shadow(0 0 14px rgba(126,207,114,0.4));
+  }
+
+  .zone-bg.highlight-zone[data-zone="generation"] {
+    stroke: rgba(92,214,200,0.6) !important;
+    filter: brightness(2) drop-shadow(0 0 14px rgba(92,214,200,0.35));
+  }
+
+  .zone-bg.highlight-zone[data-zone="adapter"] {
+    stroke: rgba(111,163,247,0.6) !important;
+    filter: brightness(2) drop-shadow(0 0 14px rgba(111,163,247,0.35));
+  }
+
+  .zone-bg.highlight-zone[data-zone="phase"] {
+    stroke: rgba(124,130,144,0.6) !important;
+    filter: brightness(2) drop-shadow(0 0 14px rgba(124,130,144,0.3));
+  }
+
+  .zone-bg.highlight-zone[data-zone="optional"] {
+    stroke: rgba(240,112,112,0.5) !important;
+    filter: brightness(2) drop-shadow(0 0 10px rgba(240,112,112,0.3));
+  }
+
+  .zone-bg.highlight-zone[data-zone="regloss"] {
+    stroke: rgba(111,163,247,0.5) !important;
+    filter: brightness(2) drop-shadow(0 0 10px rgba(111,163,247,0.3));
+  }
+
+  /* ── Group Labels ── */
+  .zone-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    pointer-events: all;
+    cursor: pointer;
+  }
+
+  /* Zone hover: soft inner-node highlight */
+  .diagram.has-zone-hover .node:not(.zone-member) {
+    opacity: 0.2;
+  }
+  .diagram.has-zone-hover .arrow:not(.highlight) {
+    opacity: 0.08;
+  }
+  .diagram.has-zone-hover .zone-bg:not(.highlight-zone) {
+    opacity: 0.15;
+  }
+  .diagram.has-zone-hover .edge-label:not(.highlight-label) {
+    opacity: 0.08;
+  }
+  .diagram.has-zone-hover .zone-label:not(.highlight-zone-label) {
+    opacity: 0.2;
+  }
+  .node.zone-member {
+    opacity: 0.85 !important;
+  }
+  .node.zone-member rect, .node.zone-member path.diamond {
+    filter: brightness(1.15);
+  }
+  .zone-label.highlight-zone-label {
+    opacity: 1 !important;
+    filter: brightness(1.5);
+  }
+
+  /* ── Edge Labels ── */
+  .edge-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    fill: var(--text-muted);
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .diagram.has-hover .edge-label:not(.highlight-label) {
+    opacity: 0.15;
+  }
+
+  /* ── Tooltip ── */
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: #1e2129;
+    border: 1px solid var(--border-hover);
+    border-radius: 10px;
+    padding: 14px 18px;
+    max-width: 300px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+
+  .tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .tooltip .tt-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-teal);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tooltip .tt-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    transition: color 0.2s ease;
+  }
+
+  .legend-item:hover {
+    color: var(--text-primary);
+  }
+
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1.5px solid;
+  }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+  <header>
+    <h1>SCST Training Loop</h1>
+    <span class="subtitle">Self-Critical Sequence Training — hover to explore</span>
+  </header>
+
+  <div class="diagram-container">
+    <svg class="diagram" viewBox="0 0 820 738" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Arrowhead markers -->
+        <marker id="ah-default" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0,1 8,4 0,7" fill="var(--arrow-default)"/>
+        </marker>
+        <marker id="ah-highlight" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0,1 8,4 0,7" fill="var(--arrow-highlight)"/>
+        </marker>
+        <marker id="ah-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0,1 8,4 0,7" fill="var(--accent-green)"/>
+        </marker>
+        <marker id="ah-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0,1 8,4 0,7" fill="#cc4444"/>
+        </marker>
+        <marker id="ah-reward" markerWidth="8" markerHeight="8" refX="1" refY="4" orient="auto">
+          <polygon points="8,1 0,4 8,7" fill="var(--accent-red)"/>
+        </marker>
+
+        <!-- Zone hatching patterns -->
+        <pattern id="hatch-teal" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(92,214,200,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-blue" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(111,163,247,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-red" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(240,112,112,0.07)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-green" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(126,207,114,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-gray" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(124,130,144,0.07)" stroke-width="1.5"/>
+        </pattern>
+
+        <!-- Glow filter -->
+        <filter id="glow-blue">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+
+      <!-- ═══════════ ZONE BACKGROUNDS ═══════════ -->
+
+      <!-- Generation loop zone (teal) -->
+      <rect class="zone-bg" data-zone="generation" x="469" y="295" width="350" height="220" rx="16" ry="16"
+            fill="url(#hatch-teal)" stroke="rgba(92,214,200,0.2)" stroke-width="1" stroke-dasharray="6 4"/>
+
+      <!-- Frozen Decoder zone (green) -->
+      <rect class="zone-bg" data-zone="decoder" x="485" y="311" width="320" height="100" rx="12" ry="12"
+            fill="url(#hatch-green)" stroke="rgba(126,207,114,0.25)" stroke-width="1"/>
+
+      <!-- Adapter / RL zone (blue) -->
+      <rect class="zone-bg" data-zone="adapter" x="485.5" y="440" width="320" height="295" rx="16" ry="16"
+            fill="url(#hatch-blue)" stroke="rgba(111,163,247,0.2)" stroke-width="1"/>
+
+      <!-- Discriminator zone (red) -->
+      <rect class="zone-bg" data-zone="discriminator" x="45" y="310" width="320" height="310" rx="16" ry="16"
+            fill="url(#hatch-red)" stroke="rgba(240,112,112,0.25)" stroke-width="1"/>
+
+      <!-- Optional update sub-zone -->
+      <rect class="zone-bg" data-zone="optional" x="56" y="428" width="150" height="170" rx="12" ry="12"
+            fill="rgba(240,112,112,0.03)" stroke="rgba(240,112,112,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+
+      <!-- Phase Manager zone (gray) -->
+      <rect class="zone-bg" data-zone="phase" x="189" y="205" width="470" height="65" rx="10" ry="10"
+            fill="url(#hatch-gray)" stroke="rgba(124,130,144,0.2)" stroke-width="1"/>
+
+      <!-- Regularization losses sub-zone -->
+      <rect class="zone-bg" data-zone="regloss" x="495" y="614" width="300" height="98" rx="12" ry="12"
+            fill="rgba(111,163,247,0.04)" stroke="rgba(111,163,247,0.18)" stroke-width="1"/>
+
+
+      <!-- ═══════════ ZONE LABELS ═══════════ -->
+      <text class="zone-label" data-zone="generation" x="747" y="292" text-anchor="middle" font-size="11" fill="rgba(92,214,200,0.5)">Generation loop</text>
+      <text class="zone-label" data-zone="decoder" x="727" y="308" text-anchor="middle" font-size="14" fill="rgba(126,207,114,0.55)">Frozen Decoder</text>
+      <text class="zone-label" data-zone="adapter" x="541" y="438" text-anchor="middle" font-size="14" fill="rgba(111,163,247,0.6)">Adapter</text>
+      <text class="zone-label" data-zone="discriminator" x="134" y="308" text-anchor="middle" font-size="14" fill="rgba(240,112,112,0.6)">Discriminator</text>
+      <text class="zone-label" data-zone="optional" x="117" y="426" text-anchor="middle" font-size="10" fill="rgba(240,112,112,0.4)">Optional update</text>
+      <text class="zone-label" data-zone="phase" x="252" y="204" text-anchor="middle" font-size="13" fill="rgba(124,130,144,0.5)">Phase Manager</text>
+      <text class="zone-label" data-zone="regloss" x="577" y="611" text-anchor="middle" font-size="10" fill="rgba(111,163,247,0.45)">Regularization losses</text>
+
+
+      <!-- ═══════════ ARROWS ═══════════ -->
+
+      <!-- Prepare batch → Phase? -->
+      <g class="arrow" data-from="prepare-batch" data-to="phase-decision">
+        <line x1="425" y1="60" x2="425" y2="88" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Phase? → Warm-up (Disc weak) -->
+      <g class="arrow" data-from="phase-decision" data-to="warmup">
+        <polyline points="385,128 310,128 310,225" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="335" y="122">Disc weak</text>
+      </g>
+
+      <!-- Phase? → Refresh (Disc okay) -->
+      <g class="arrow" data-from="phase-decision" data-to="refresh">
+        <line x1="425" y1="168" x2="425" y2="225" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="433" y="193">Disc okay</text>
+      </g>
+
+      <!-- Phase? → RL-only (Disc strong) -->
+      <g class="arrow" data-from="phase-decision" data-to="rl-only">
+        <polyline points="465,128 540,128 540,225" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="515" y="122">Disc strong</text>
+      </g>
+
+      <!-- Warm-up → Discriminator zone -->
+      <g class="arrow" data-from="warmup" data-to="discriminator-zone">
+        <polyline points="280,257 280,289 216.5,289 216.5,310" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Refresh → Discriminator zone -->
+      <g class="arrow" data-from="refresh" data-to="discriminator-zone">
+        <polyline points="395,257 395,294 285,294 285,310" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Refresh → Frozen Decoder zone -->
+      <g class="arrow" data-from="refresh" data-to="decoder-zone">
+        <polyline points="455,257 455,287 565,287 565,311" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- RL-only → Frozen Decoder zone -->
+      <g class="arrow" data-from="rl-only" data-to="decoder-zone">
+        <polyline points="570,258 570,281 645,281 645,311" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Real seq → Loss computation -->
+      <g class="arrow" data-from="real-seq" data-to="loss-comp">
+        <polyline points="132.5,399 132.5,405 247.5,405 247.5,442" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Fake seq → Loss computation -->
+      <g class="arrow" data-from="fake-seq" data-to="loss-comp">
+        <line x1="307.5" y1="399" x2="307.5" y2="442" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Greedy hiddens → Greedy continuation (green dashed) -->
+      <g class="arrow" data-from="greedy-hiddens" data-to="greedy-cont">
+        <line x1="600.5" y1="391" x2="600.5" y2="450" stroke="var(--accent-green)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ah-green)" opacity="0.6"/>
+      </g>
+
+      <!-- Sampled hiddens → Sampled continuation (green dashed) -->
+      <g class="arrow" data-from="sampled-hiddens" data-to="sampled-cont">
+        <line x1="745.5" y1="391" x2="745.5" y2="450" stroke="var(--accent-green)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ah-green)" opacity="0.6"/>
+      </g>
+
+      <!-- Greedy cont → RL loss (hand-drawn style) -->
+      <g class="arrow" data-from="greedy-cont" data-to="rl-loss">
+        <line x1="570.5" y1="506" x2="570.5" y2="526" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Sampled cont → RL loss -->
+      <g class="arrow" data-from="sampled-cont" data-to="rl-loss">
+        <polyline points="685.5,506 685.5,554 631,554" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Sampled cont → Regularization losses zone -->
+      <g class="arrow" data-from="sampled-cont" data-to="regloss-zone">
+        <line x1="746.5" y1="506" x2="746.5" y2="614" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Sampled cont → Fake seq (no grad, dashed) -->
+      <g class="arrow" data-from="greedy-cont" data-to="fake-seq">
+        <polyline points="487,478 412,478 412,369 338,369" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="442" y="474">No grad</text>
+      </g>
+
+      <!-- Discriminator → RL loss (reward signal) -->
+      <g class="arrow" data-from="discriminator-zone" data-to="rl-loss">
+        <polyline points="365,554 510,554" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="424" y="548">Reward signal</text>
+      </g>
+
+      <!-- Loss comp → Feature match (no grad, dashed) -->
+      <g class="arrow" data-from="loss-comp" data-to="feature-match">
+        <polyline points="285,502 285,643 516,643" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="407" y="638">No grad</text>
+      </g>
+
+      <!-- Loss comp → Optional real seq copy (dashed red) -->
+      <g class="arrow" data-from="loss-comp" data-to="opt-real-seq">
+        <polyline points="206,522 226,522 277.5,522 277.5,502" fill="none" stroke="#cc4444" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#ah-red)" opacity="0.5"/>
+      </g>
+
+      <!-- Param updates → Prepare batch (loop back) -->
+      <g class="arrow" data-from="param-updates" data-to="prepare-batch">
+        <polyline points="163,692 7,692 7,30 365,30" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- RL loss → Param updates -->
+      <g class="arrow" data-from="rl-loss-to-param" data-to="param-updates">
+        <line x1="205" y1="620" x2="207" y2="648" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Param updates → Reg losses -->
+      <g class="arrow" data-from="param-updates" data-to="reg-losses">
+        <line x1="251" y1="692" x2="495" y2="692" stroke="var(--arrow-default)" stroke-width="1.3"/>
+        <polygon points="251,692 258,689 256,692 258,695" fill="var(--arrow-default)"/>
+      </g>
+
+
+      <!-- ═══════════ NODES ═══════════ -->
+
+      <!-- Prepare batch -->
+      <g class="node" data-id="prepare-batch">
+        <rect x="365" y="0" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.3"/>
+        <text x="425" y="34" text-anchor="middle" font-size="12.5">Prepare batch</text>
+      </g>
+
+      <!-- Phase? (diamond) -->
+      <g class="node" data-id="phase-decision">
+        <path class="diamond" d="M425,88 L465,128 L425,168 L385,128 Z"
+              fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.3"/>
+        <text x="425" y="132" text-anchor="middle" font-size="12.5">Phase?</text>
+      </g>
+
+      <!-- Warm-up -->
+      <g class="node" data-id="warmup">
+        <rect x="220" y="225" width="120" height="32" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="280" y="245" text-anchor="middle" font-size="12">Warm-up</text>
+      </g>
+
+      <!-- Refresh -->
+      <g class="node" data-id="refresh">
+        <rect x="365" y="225" width="120" height="32" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="425" y="245" text-anchor="middle" font-size="12">Refresh</text>
+      </g>
+
+      <!-- RL-only -->
+      <g class="node" data-id="rl-only">
+        <rect x="510" y="225" width="120" height="33" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="570" y="245" text-anchor="middle" font-size="12">RL-only</text>
+      </g>
+
+      <!-- 'Real' sequence -->
+      <g class="node" data-id="real-seq">
+        <rect x="72.5" y="339" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="133" y="365" text-anchor="middle" font-size="12">'Real'</text>
+        <text x="133" y="381" text-anchor="middle" font-size="12">sequence</text>
+      </g>
+
+      <!-- 'Fake' sequence -->
+      <g class="node" data-id="fake-seq">
+        <rect x="217.5" y="339" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="278" y="365" text-anchor="middle" font-size="12">'Fake'</text>
+        <text x="278" y="381" text-anchor="middle" font-size="12">sequence</text>
+      </g>
+
+      <!-- Loss computation -->
+      <g class="node" data-id="loss-comp">
+        <rect x="217.5" y="442" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="278" y="468" text-anchor="middle" font-size="12">Loss</text>
+        <text x="278" y="484" text-anchor="middle" font-size="12">computation</text>
+      </g>
+
+      <!-- Optional 'Real' seq copy -->
+      <g class="node" data-id="opt-real-seq">
+        <rect x="73" y="442" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="#cc4444" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+        <text x="133" y="468" text-anchor="middle" font-size="12" fill="var(--text-secondary)">'Real'</text>
+        <text x="133" y="484" text-anchor="middle" font-size="12" fill="var(--text-secondary)">sequence</text>
+      </g>
+
+      <!-- Mismatched 'real' seq -->
+      <g class="node" data-id="mismatch-seq">
+        <rect x="71" y="527" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="#cc4444" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+        <text x="131" y="551" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Mismatched 'real'</text>
+        <text x="131" y="567" text-anchor="middle" font-size="11" fill="var(--text-secondary)">sequence</text>
+      </g>
+
+      <!-- Greedy hiddens -->
+      <g class="node" data-id="greedy-hiddens">
+        <rect x="510.5" y="331" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+        <text x="571" y="357" text-anchor="middle" font-size="12">Greedy</text>
+        <text x="571" y="373" text-anchor="middle" font-size="12">hiddens</text>
+      </g>
+
+      <!-- Sampled hiddens -->
+      <g class="node" data-id="sampled-hiddens">
+        <rect x="655.5" y="331" width="120" height="60" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+        <text x="716" y="357" text-anchor="middle" font-size="12">Sampled</text>
+        <text x="716" y="373" text-anchor="middle" font-size="12">hiddens</text>
+      </g>
+
+      <!-- Greedy continuation -->
+      <g class="node" data-id="greedy-cont">
+        <rect x="510.5" y="450.33" width="120" height="55.82" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+        <text x="571" y="474" text-anchor="middle" font-size="12">Greedy</text>
+        <text x="571" y="490" text-anchor="middle" font-size="12">continuation</text>
+      </g>
+
+      <!-- Sampled continuation -->
+      <g class="node" data-id="sampled-cont">
+        <rect x="655.5" y="450.33" width="120" height="55.82" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+        <text x="716" y="474" text-anchor="middle" font-size="12">Sampled</text>
+        <text x="716" y="490" text-anchor="middle" font-size="12">continuation</text>
+      </g>
+
+      <!-- RL loss -->
+      <g class="node" data-id="rl-loss">
+        <rect x="510.5" y="525.68" width="120" height="55.82" rx="9" ry="9"
+              fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+        <text x="571" y="558" text-anchor="middle" font-size="12">RL loss</text>
+      </g>
+
+      <!-- Feature match -->
+      <g class="node" data-id="feature-match">
+        <rect x="516.5" y="628" width="120" height="30" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="577" y="647" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">Feature match</text>
+      </g>
+
+      <!-- Policy entropy -->
+      <g class="node" data-id="policy-entropy">
+        <rect x="656.5" y="628" width="120" height="30" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="717" y="647" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">Policy entropy</text>
+      </g>
+
+      <!-- Teacher-forced -->
+      <g class="node" data-id="teacher-forced">
+        <rect x="516.5" y="669" width="120" height="30" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="577" y="688" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">Teacher-forced</text>
+      </g>
+
+      <!-- KL policy reg -->
+      <g class="node" data-id="kl-reg">
+        <rect x="659" y="669" width="120" height="28" rx="5" ry="5"
+              fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="719" y="687" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">KL policy reg.</text>
+      </g>
+
+      <!-- Param updates (diamond) -->
+      <g class="node" data-id="param-updates">
+        <path class="diamond" d="M207,648 L251,692 L207,736 L163,692 Z"
+              fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.8"/>
+        <text x="207" y="688" text-anchor="middle" font-size="12">Param</text>
+        <text x="207" y="704" text-anchor="middle" font-size="12">updates</text>
+      </g>
+
+    </svg>
+
+    <!-- Tooltip -->
+    <div class="tooltip" id="tooltip">
+      <div class="tt-title"></div>
+      <div class="tt-body"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--accent-gray-dim); border-color:var(--accent-gray);"></div>
+      Phase Manager
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--accent-green-dim); border-color:var(--accent-green);"></div>
+      Frozen Decoder
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--accent-teal-dim); border-color:var(--accent-teal);"></div>
+      Generation Loop
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--accent-blue-dim); border-color:var(--accent-blue);"></div>
+      Adapter (Trainable)
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:var(--accent-red-dim); border-color:var(--accent-red);"></div>
+      Discriminator
+    </div>
+  </div>
+</div>
+
+<script>
+const tooltips = {
+  'prepare-batch': {
+    title: 'Prepare Batch',
+    body: 'Samples a batch of input sequences from the training data, preparing context tokens for the generation and discrimination pipeline.'
+  },
+  'phase-decision': {
+    title: 'Phase Decision',
+    body: 'Routes training based on discriminator quality. "Disc weak" → warm-up phase, "Disc okay" → refresh phase, "Disc strong" → RL-only phase. Controls the training curriculum.'
+  },
+  'warmup': {
+    title: 'Warm-up Phase',
+    body: 'Initial phase where the discriminator is trained on real vs fake sequences to build classification ability before RL training begins.'
+  },
+  'refresh': {
+    title: 'Refresh Phase',
+    body: 'Mixed phase that simultaneously updates both the discriminator and the generator via RL, keeping the discriminator calibrated as the generator improves.'
+  },
+  'rl-only': {
+    title: 'RL-only Phase',
+    body: 'Pure reinforcement learning phase where only the generator is updated using the frozen discriminator\'s reward signal. Active when the discriminator is strong enough.'
+  },
+  'real-seq': {
+    title: "'Real' Sequence",
+    body: 'Ground-truth sequence from the training data, used as the positive example for the discriminator\'s binary classification objective.'
+  },
+  'fake-seq': {
+    title: "'Fake' Sequence",
+    body: 'Generated sequence from the model (via greedy decoding), used as the negative example for discriminator training. Detached from the computation graph.'
+  },
+  'loss-comp': {
+    title: 'Loss Computation',
+    body: 'Computes the discriminator\'s binary cross-entropy loss between real and fake sequences, driving it to distinguish generated text from real text.'
+  },
+  'opt-real-seq': {
+    title: "Optional 'Real' Sequence",
+    body: 'Additional real sequence optionally fed into the discriminator during its update step for improved training stability.'
+  },
+  'mismatch-seq': {
+    title: "Mismatched 'Real' Sequence",
+    body: 'A real sequence paired with a different context, serving as a hard negative to improve the discriminator\'s conditional reasoning.'
+  },
+  'greedy-hiddens': {
+    title: 'Greedy Hiddens',
+    body: 'Hidden states from the frozen decoder\'s greedy (argmax) forward pass. Serves as the baseline for the SCST reward computation.'
+  },
+  'sampled-hiddens': {
+    title: 'Sampled Hiddens',
+    body: 'Hidden states from the frozen decoder\'s sampled forward pass. These flow through the trainable adapter and are used for the RL policy gradient.'
+  },
+  'greedy-cont': {
+    title: 'Greedy Continuation',
+    body: 'Adapter output for the greedy-decoded baseline. Used to compute the baseline reward in the SCST self-critical objective.'
+  },
+  'sampled-cont': {
+    title: 'Sampled Continuation',
+    body: 'Adapter output for the sampled sequence. The RL loss is computed by comparing this sample\'s reward against the greedy baseline.'
+  },
+  'rl-loss': {
+    title: 'RL Loss',
+    body: 'The REINFORCE loss weighted by advantage (sampled reward − greedy baseline reward). This is the core SCST gradient signal for the adapter.'
+  },
+  'feature-match': {
+    title: 'Feature Match Loss',
+    body: 'Regularization loss that encourages the generator\'s intermediate features to match statistics of real data, stabilizing GAN-style training.'
+  },
+  'policy-entropy': {
+    title: 'Policy Entropy',
+    body: 'Entropy bonus encouraging exploration by penalizing overly peaked output distributions, preventing the policy from collapsing to deterministic outputs.'
+  },
+  'teacher-forced': {
+    title: 'Teacher-Forced Loss',
+    body: 'Standard MLE loss on ground-truth tokens, acting as a regularizer to prevent the RL policy from drifting too far from the pretrained language model.'
+  },
+  'kl-reg': {
+    title: 'KL Policy Regularization',
+    body: 'KL divergence penalty between the current policy and a reference policy, constraining how far the adapter can deviate from the base model behavior.'
+  },
+  'param-updates': {
+    title: 'Parameter Updates',
+    body: 'Aggregates all loss signals (RL + regularization + optional discriminator) and applies gradient updates to the trainable adapter parameters. Then loops back.'
+  }
+};
+
+// Connection map: nodeId → { incoming arrows, outgoing arrows }
+const connections = {
+  'prepare-batch': {
+    out: ['prepare-batch__phase-decision'],
+    in: ['param-updates__prepare-batch']
+  },
+  'phase-decision': {
+    out: ['phase-decision__warmup', 'phase-decision__refresh', 'phase-decision__rl-only'],
+    in: ['prepare-batch__phase-decision']
+  },
+  'warmup': {
+    out: ['warmup__discriminator-zone'],
+    in: ['phase-decision__warmup']
+  },
+  'refresh': {
+    out: ['refresh__discriminator-zone', 'refresh__decoder-zone'],
+    in: ['phase-decision__refresh']
+  },
+  'rl-only': {
+    out: ['rl-only__decoder-zone'],
+    in: ['phase-decision__rl-only']
+  },
+  'real-seq': {
+    out: ['real-seq__loss-comp'],
+    in: []
+  },
+  'fake-seq': {
+    out: ['fake-seq__loss-comp'],
+    in: ['greedy-cont__fake-seq']
+  },
+  'loss-comp': {
+    out: ['loss-comp__feature-match', 'loss-comp__opt-real-seq', 'rl-loss-to-param__param-updates'],
+    in: ['real-seq__loss-comp', 'fake-seq__loss-comp']
+  },
+  'greedy-hiddens': {
+    out: ['greedy-hiddens__greedy-cont'],
+    in: []
+  },
+  'sampled-hiddens': {
+    out: ['sampled-hiddens__sampled-cont'],
+    in: []
+  },
+  'greedy-cont': {
+    out: ['greedy-cont__rl-loss', 'greedy-cont__fake-seq'],
+    in: ['greedy-hiddens__greedy-cont']
+  },
+  'sampled-cont': {
+    out: ['sampled-cont__rl-loss', 'sampled-cont__regloss-zone'],
+    in: ['sampled-hiddens__sampled-cont']
+  },
+  'rl-loss': {
+    out: ['rl-loss-to-param__param-updates'],
+    in: ['greedy-cont__rl-loss', 'sampled-cont__rl-loss', 'discriminator-zone__rl-loss']
+  },
+  'feature-match': {
+    out: [],
+    in: ['loss-comp__feature-match']
+  },
+  'policy-entropy': {
+    out: [],
+    in: []
+  },
+  'teacher-forced': { out: [], in: [] },
+  'kl-reg': { out: [], in: [] },
+  'opt-real-seq': {
+    out: [],
+    in: ['loss-comp__opt-real-seq']
+  },
+  'mismatch-seq': { out: [], in: [] },
+  'param-updates': {
+    out: ['param-updates__prepare-batch'],
+    in: ['rl-loss-to-param__param-updates', 'param-updates__reg-losses']
+  }
+};
+
+// Build arrow ID lookup from data-from / data-to
+const arrowMap = {};
+document.querySelectorAll('.arrow').forEach(arrow => {
+  const from = arrow.dataset.from;
+  const to = arrow.dataset.to;
+  const key = `${from}__${to}`;
+  arrowMap[key] = arrow;
+});
+
+const svg = document.querySelector('.diagram');
+const tooltip = document.getElementById('tooltip');
+const ttTitle = tooltip.querySelector('.tt-title');
+const ttBody = tooltip.querySelector('.tt-body');
+
+function clearAllHighlights() {
+  svg.classList.remove('has-hover');
+  svg.classList.remove('has-zone-hover');
+  document.querySelectorAll('.highlight-node').forEach(n => n.classList.remove('highlight-node'));
+  document.querySelectorAll('.zone-member').forEach(n => n.classList.remove('zone-member'));
+  document.querySelectorAll('.arrow.highlight').forEach(a => a.classList.remove('highlight'));
+  document.querySelectorAll('.highlight-label').forEach(l => l.classList.remove('highlight-label'));
+  document.querySelectorAll('.highlight-zone').forEach(z => z.classList.remove('highlight-zone'));
+  document.querySelectorAll('.highlight-zone-label').forEach(l => l.classList.remove('highlight-zone-label'));
+  tooltip.classList.remove('visible');
+}
+
+// Hover logic
+document.querySelectorAll('.node').forEach(node => {
+  const id = node.dataset.id;
+
+  node.addEventListener('mouseenter', (e) => {
+    e.stopPropagation();
+    clearAllHighlights();
+    svg.classList.add('has-hover');
+    node.classList.add('highlight-node');
+
+    // Highlight connected arrows and connected nodes
+    const conn = connections[id] || { in: [], out: [] };
+    const allArrowKeys = [...conn.in, ...conn.out];
+
+    allArrowKeys.forEach(key => {
+      const arrow = arrowMap[key];
+      if (arrow) {
+        arrow.classList.add('highlight');
+        // Also highlight edge labels inside
+        arrow.querySelectorAll('.edge-label').forEach(l => l.classList.add('highlight-label'));
+      }
+      // Highlight connected node
+      const parts = key.split('__');
+      const otherId = parts[0] === id ? parts[1] : parts[0];
+      const otherNode = document.querySelector(`.node[data-id="${otherId}"]`);
+      if (otherNode) otherNode.classList.add('highlight-node');
+    });
+
+    // Also highlight zones that are arrow targets
+    const zoneTargets = {
+      'discriminator-zone': 'discriminator',
+      'decoder-zone': 'decoder',
+      'regloss-zone': 'regloss'
+    };
+    allArrowKeys.forEach(key => {
+      const parts = key.split('__');
+      const targetId = parts[0] === id ? parts[1] : parts[0];
+      if (zoneTargets[targetId]) {
+        const zone = document.querySelector(`.zone-bg[data-zone="${zoneTargets[targetId]}"]`);
+        if (zone) zone.classList.add('highlight-zone');
+      }
+    });
+
+    // Show tooltip
+    const info = tooltips[id];
+    if (info) {
+      ttTitle.textContent = info.title;
+      ttBody.textContent = info.body;
+
+      const rect = node.getBoundingClientRect();
+      const containerRect = document.querySelector('.diagram-container').getBoundingClientRect();
+
+      let left = rect.right - containerRect.left + 14;
+      let top = rect.top - containerRect.top;
+
+      // If tooltip would go off right edge
+      if (left + 300 > containerRect.width) {
+        left = rect.left - containerRect.left - 314;
+      }
+      // If tooltip would go below
+      if (top + 120 > containerRect.height) {
+        top = containerRect.height - 140;
+      }
+      if (top < 0) top = 8;
+
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+      tooltip.classList.add('visible');
+    }
+  });
+
+  node.addEventListener('mouseleave', () => {
+    clearAllHighlights();
+  });
+});
+
+// ═══════════ ZONE HOVER LOGIC ═══════════
+
+// Zone membership: which node IDs belong to each zone
+const zoneMembership = {
+  'phase':         ['warmup', 'refresh', 'rl-only'],
+  'decoder':       ['greedy-hiddens', 'sampled-hiddens'],
+  'generation':    ['greedy-hiddens', 'sampled-hiddens', 'greedy-cont', 'sampled-cont'],
+  'adapter':       ['greedy-cont', 'sampled-cont', 'rl-loss', 'feature-match', 'policy-entropy', 'teacher-forced', 'kl-reg'],
+  'discriminator': ['real-seq', 'fake-seq', 'loss-comp', 'opt-real-seq', 'mismatch-seq'],
+  'optional':      ['opt-real-seq', 'mismatch-seq'],
+  'regloss':       ['feature-match', 'policy-entropy', 'teacher-forced', 'kl-reg']
+};
+
+// Arrows that cross a zone boundary (from outside→in or inside→out)
+const zoneBoundaryArrows = {
+  'phase':         ['prepare-batch__phase-decision', 'phase-decision__warmup', 'phase-decision__refresh', 'phase-decision__rl-only',
+                    'warmup__discriminator-zone', 'refresh__discriminator-zone', 'refresh__decoder-zone', 'rl-only__decoder-zone'],
+  'decoder':       ['refresh__decoder-zone', 'rl-only__decoder-zone',
+                    'greedy-hiddens__greedy-cont', 'sampled-hiddens__sampled-cont'],
+  'generation':    ['refresh__decoder-zone', 'rl-only__decoder-zone',
+                    'greedy-hiddens__greedy-cont', 'sampled-hiddens__sampled-cont',
+                    'greedy-cont__rl-loss', 'sampled-cont__rl-loss', 'greedy-cont__fake-seq',
+                    'sampled-cont__regloss-zone'],
+  'adapter':       ['greedy-hiddens__greedy-cont', 'sampled-hiddens__sampled-cont',
+                    'greedy-cont__rl-loss', 'sampled-cont__rl-loss', 'greedy-cont__fake-seq',
+                    'sampled-cont__regloss-zone', 'discriminator-zone__rl-loss',
+                    'rl-loss-to-param__param-updates', 'loss-comp__feature-match'],
+  'discriminator': ['warmup__discriminator-zone', 'refresh__discriminator-zone',
+                    'real-seq__loss-comp', 'fake-seq__loss-comp',
+                    'greedy-cont__fake-seq', 'discriminator-zone__rl-loss',
+                    'loss-comp__feature-match', 'loss-comp__opt-real-seq',
+                    'rl-loss-to-param__param-updates'],
+  'optional':      ['loss-comp__opt-real-seq'],
+  'regloss':       ['loss-comp__feature-match', 'sampled-cont__regloss-zone']
+};
+
+function activateZoneHover(zoneId) {
+  clearAllHighlights();
+  svg.classList.add('has-zone-hover');
+
+  // Highlight the zone background(s)
+  const zoneBg = document.querySelector(`.zone-bg[data-zone="${zoneId}"]`);
+  if (zoneBg) zoneBg.classList.add('highlight-zone');
+
+  // Highlight the zone label
+  const zoneLabel = document.querySelector(`.zone-label[data-zone="${zoneId}"]`);
+  if (zoneLabel) zoneLabel.classList.add('highlight-zone-label');
+
+  // For generation zone, also highlight nested decoder
+  if (zoneId === 'generation') {
+    const decoderBg = document.querySelector('.zone-bg[data-zone="decoder"]');
+    if (decoderBg) decoderBg.classList.add('highlight-zone');
+    const decoderLabel = document.querySelector('.zone-label[data-zone="decoder"]');
+    if (decoderLabel) decoderLabel.classList.add('highlight-zone-label');
+  }
+  // For adapter, also highlight nested regloss
+  if (zoneId === 'adapter') {
+    const regBg = document.querySelector('.zone-bg[data-zone="regloss"]');
+    if (regBg) regBg.classList.add('highlight-zone');
+    const regLabel = document.querySelector('.zone-label[data-zone="regloss"]');
+    if (regLabel) regLabel.classList.add('highlight-zone-label');
+  }
+  // For discriminator, also highlight nested optional
+  if (zoneId === 'discriminator') {
+    const optBg = document.querySelector('.zone-bg[data-zone="optional"]');
+    if (optBg) optBg.classList.add('highlight-zone');
+    const optLabel = document.querySelector('.zone-label[data-zone="optional"]');
+    if (optLabel) optLabel.classList.add('highlight-zone-label');
+  }
+
+  // Light up member nodes
+  const members = zoneMembership[zoneId] || [];
+  members.forEach(nodeId => {
+    const n = document.querySelector(`.node[data-id="${nodeId}"]`);
+    if (n) n.classList.add('zone-member');
+  });
+
+  // Highlight boundary arrows
+  const arrows = zoneBoundaryArrows[zoneId] || [];
+  arrows.forEach(key => {
+    const arrow = arrowMap[key];
+    if (arrow) {
+      arrow.classList.add('highlight');
+      arrow.querySelectorAll('.edge-label').forEach(l => l.classList.add('highlight-label'));
+    }
+  });
+}
+
+// Attach hover to zone backgrounds
+document.querySelectorAll('.zone-bg').forEach(bg => {
+  const zoneId = bg.dataset.zone;
+  bg.addEventListener('mouseenter', () => activateZoneHover(zoneId));
+  bg.addEventListener('mouseleave', clearAllHighlights);
+});
+
+// Attach hover to zone labels
+document.querySelectorAll('.zone-label').forEach(label => {
+  const zoneId = label.dataset.zone;
+  label.addEventListener('mouseenter', () => activateZoneHover(zoneId));
+  label.addEventListener('mouseleave', clearAllHighlights);
+});
+
+// Attach hover to legend items
+document.querySelectorAll('.legend-item').forEach(item => {
+  const text = item.textContent.trim().toLowerCase();
+  const legendToZone = {
+    'phase manager': 'phase',
+    'frozen decoder': 'decoder',
+    'generation loop': 'generation',
+    'adapter (trainable)': 'adapter',
+    'discriminator': 'discriminator'
+  };
+  const zoneId = legendToZone[text];
+  if (zoneId) {
+    item.style.cursor = 'pointer';
+    item.addEventListener('mouseenter', () => activateZoneHover(zoneId));
+    item.addEventListener('mouseleave', clearAllHighlights);
+  }
+});
+</script>
+</body>
+</html>
