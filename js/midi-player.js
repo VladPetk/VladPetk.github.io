@@ -62,9 +62,9 @@ class MidiPlayer {
 
       if (continuationUrl) {
         const contMidi = await Midi.fromUrl(continuationUrl);
-        const contNotes = this._extractNotes(contMidi, 'continuation', 0);
+        const contNotes = this._extractNotes(contMidi, 'continuation', totalDuration);
         allNotes = allNotes.concat(contNotes);
-        totalDuration = Math.max(totalDuration, contMidi.duration);
+        totalDuration = totalDuration + contMidi.duration;
       }
 
       // Sort by time

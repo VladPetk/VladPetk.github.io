@@ -629,7 +629,7 @@ section {
 
 .diagram-panel {
   display: none;
-  max-width: 1040px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -643,7 +643,7 @@ section {
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 svg.diagram {
