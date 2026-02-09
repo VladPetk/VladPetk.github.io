@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Continuo - MIDI Autoregressive Transformer</title>
+  <meta name="description" content="Interactive showcase of a MIDI autoregressive transformer with Self-Critical Sequence Training for classical piano music generation.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ═══════ HERO ═══════ -->
+  <section id="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Continuo</h1>
+      <p class="hero-subtitle">An autoregressive transformer trained with Self-Critical Sequence Training for classical piano music generation</p>
+      <div class="hero-cta">
+        <a href="#player" class="btn btn-primary">Listen to Samples</a>
+        <a href="#diagrams" class="btn btn-ghost">View Architecture</a>
+      </div>
+    </div>
+    <div class="hero-fade"></div>
+  </section>
+
+  <!-- ═══════ MIDI PLAYER ═══════ -->
+  <section id="player">
+    <div class="section-header">
+      <h2>Listen & Explore</h2>
+      <p class="section-desc">Select a piece to hear the original and the model's continuation. Notes are color-coded: <span class="color-tag original">original</span> vs <span class="color-tag continuation">continuation</span></p>
+    </div>
+
+    <div class="player-container">
+      <!-- Playlist sidebar -->
+      <div class="playlist" id="playlist">
+        <div class="playlist-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span>Playlist</span>
+        </div>
+        <div class="playlist-tracks" id="playlist-tracks">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <!-- Main player area -->
+      <div class="player-main">
+        <div class="piano-roll-wrapper" id="piano-roll-wrapper">
+          <canvas id="piano-roll"></canvas>
+          <div class="piano-roll-empty" id="piano-roll-empty">
+            <div class="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <p>Select a piece from the playlist</p>
+          </div>
+          <div class="loading-overlay" id="loading-overlay">
+            <div class="spinner"></div>
+            <p>Loading MIDI...</p>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls" id="controls">
+          <div class="controls-left">
+            <button class="ctrl-btn" id="btn-play" title="Play" disabled>
+              <svg id="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+              <svg id="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+            </button>
+            <button class="ctrl-btn" id="btn-stop" title="Stop" disabled>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+          </div>
+
+          <div class="controls-center">
+            <span class="time-display" id="time-current">0:00</span>
+            <div class="progress-bar-container" id="progress-bar-container">
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+              </div>
+            </div>
+            <span class="time-display" id="time-total">0:00</span>
+          </div>
+
+          <div class="controls-right">
+            <div class="now-playing" id="now-playing"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ DIAGRAMS ═══════ -->
+  <section id="diagrams">
+    <div class="section-header">
+      <h2>Architecture</h2>
+      <p class="section-desc">Interactive diagrams of the model architecture and training procedure. Hover over nodes and zones to explore.</p>
+    </div>
+
+    <div class="diagram-tabs">
+      <button class="diagram-tab active" data-diagram="arch">Pre-training & Generation</button>
+      <button class="diagram-tab" data-diagram="scst">Training Loop</button>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div class="diagram-panel active" id="panel-arch">
+      <div class="diagram-container" id="arch-container">
+        <svg class="diagram" id="arch-svg" viewBox="0 0 992 586" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arch-ah-default" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <polygon points="0,1 8,4 0,7" fill="var(--arrow-default)"/>
+            </marker>
+            <marker id="arch-ah-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <polygon points="0,1 8,4 0,7" fill="var(--accent-green)"/>
+            </marker>
+            <pattern id="arch-hatch-teal" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(92,214,200,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="arch-hatch-green" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(126,207,114,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="arch-hatch-blue" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(111,163,247,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="arch-hatch-purple" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(179,146,208,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="arch-hatch-red" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(240,112,112,0.07)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="arch-hatch-gray" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(124,130,144,0.07)" stroke-width="1.5"/>
+            </pattern>
+          </defs>
+
+          <!-- ZONE BACKGROUNDS -->
+          <rect class="zone-bg" data-zone="generation" x="23" y="17" width="968" height="348" rx="20" ry="20" fill="url(#arch-hatch-teal)" stroke="rgba(92,214,200,0.2)" stroke-width="1" stroke-dasharray="6 4"/>
+          <rect class="zone-bg" data-zone="decoder" x="183" y="38" width="780" height="170" rx="14" ry="14" fill="url(#arch-hatch-green)" stroke="rgba(126,207,114,0.25)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="pretrain-losses" x="660.5" y="58" width="260" height="130" rx="12" ry="12" fill="rgba(126,207,114,0.04)" stroke="rgba(126,207,114,0.18)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="adapter" x="529" y="249" width="440" height="100" rx="12" ry="12" fill="url(#arch-hatch-blue)" stroke="rgba(111,163,247,0.2)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="sampler" x="184" y="249" width="310" height="100" rx="12" ry="12" fill="url(#arch-hatch-purple)" stroke="rgba(179,146,208,0.2)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="batch" x="16" y="399" width="146" height="186" rx="12" ry="12" fill="url(#arch-hatch-gray)" stroke="rgba(124,130,144,0.2)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="discriminator" x="183" y="399" width="790" height="186" rx="14" ry="14" fill="url(#arch-hatch-red)" stroke="rgba(240,112,112,0.25)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="disc-encoder" x="189" y="457.5" width="291.5" height="76" rx="10" ry="10" fill="rgba(240,112,112,0.03)" stroke="rgba(240,112,112,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+
+          <!-- ZONE LABELS -->
+          <text class="zone-label" data-zone="generation" x="126" y="15" text-anchor="middle" font-size="13" fill="rgba(92,214,200,0.5)">Generation loop</text>
+          <text class="zone-label" data-zone="decoder" x="263" y="37" text-anchor="middle" font-size="14" fill="rgba(126,207,114,0.55)">Decoder</text>
+          <text class="zone-label" data-zone="pretrain-losses" x="756" y="59" text-anchor="middle" font-size="11" fill="rgba(126,207,114,0.45)">Losses during pre-training</text>
+          <text class="zone-label" data-zone="decoder" x="840" y="37" text-anchor="middle" font-size="10" fill="rgba(126,207,114,0.35)">Frozen during generation in SCST</text>
+          <text class="zone-label" data-zone="adapter" x="581" y="247" text-anchor="middle" font-size="14" fill="rgba(111,163,247,0.6)">Adapter</text>
+          <text class="zone-label" data-zone="adapter" x="884" y="347" text-anchor="middle" font-size="10" fill="rgba(111,163,247,0.35)">identity initialization</text>
+          <text class="zone-label" data-zone="sampler" x="241" y="247" text-anchor="middle" font-size="14" fill="rgba(179,146,208,0.55)">Sampler</text>
+          <text class="zone-label" data-zone="batch" x="65" y="396" text-anchor="middle" font-size="14" fill="rgba(124,130,144,0.5)">Batch</text>
+          <text class="zone-label" data-zone="discriminator" x="265" y="394" text-anchor="middle" font-size="14" fill="rgba(240,112,112,0.6)">Discriminator</text>
+
+          <!-- ARROWS -->
+          <g class="arrow" data-from="prime-seq" data-to="dec-transformer">
+            <line x1="152" y1="123" x2="213" y2="123" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="dec-transformer" data-to="last-hiddens">
+            <line x1="333" y1="138" x2="353" y2="138" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="last-hiddens" data-to="logits">
+            <line x1="473" y1="138" x2="503" y2="138" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="logits" data-to="pretrain-losses-zone">
+            <line x1="623" y1="138" x2="660.5" y2="138" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="pretrain-losses-zone" data-to="dec-transformer">
+            <polyline points="660.5,90.5 660.5,88 273,88 273,108" fill="none" stroke="var(--accent-green)" stroke-width="1.3" marker-end="url(#arch-ah-green)" opacity="0.6"/>
+          </g>
+          <g class="arrow" data-from="last-hiddens" data-to="input-proj">
+            <polyline points="413,168 413,227 889,227 889,269" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="6 6" marker-end="url(#arch-ah-default)"/>
+            <text class="edge-label" x="680" y="222">During generation</text>
+          </g>
+          <g class="arrow" data-from="input-proj" data-to="adp-transformer">
+            <line x1="829" y1="299" x2="809" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="adp-transformer" data-to="to-logits">
+            <line x1="689" y1="299" x2="669" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="to-logits" data-to="sampler-zone">
+            <line x1="549" y1="299" x2="494" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="fsm" data-to="top-p">
+            <line x1="354.5" y1="299" x2="324" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="top-p" data-to="prime-seq">
+            <polyline points="204,299 92,299 92,153" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+            <text class="edge-label" x="78" y="232">Append token</text>
+          </g>
+          <g class="arrow" data-from="prime-seq" data-to="batch-zone">
+            <polyline points="23,191 7,191 7,470 29,470" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="batch-zone" data-to="discriminator-zone">
+            <line x1="162" y1="492" x2="183" y2="492" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="encoder" data-to="cross-attn">
+            <polyline points="261,464 261,444 408,444 408,464" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+            <text class="edge-label" x="334" y="438">Prime context</text>
+          </g>
+          <g class="arrow" data-from="encoder" data-to="cross-attn-bot">
+            <polyline points="261,524 261,548 408,548 408,524" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+            <text class="edge-label" x="316" y="560">Continuation embedding</text>
+          </g>
+          <g class="arrow" data-from="cross-attn" data-to="bar-head">
+            <polyline points="438,464 438,444 499,444" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="cross-attn" data-to="token-head">
+            <polyline points="438,524 438,541 499,541" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="bar-head" data-to="global-pool">
+            <line x1="619" y1="444" x2="655" y2="444" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="token-head" data-to="mean-token">
+            <line x1="619" y1="541" x2="655" y2="541" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="global-pool" data-to="global-score">
+            <polyline points="775,444 795.5,444 795.5,479 816,479" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="mean-token" data-to="global-score">
+            <polyline points="775,541 795.5,541 795.5,509 816,509" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#arch-ah-default)"/>
+          </g>
+
+          <!-- NODES -->
+          <g class="node" data-id="prime-seq">
+            <rect x="32" y="93" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.3"/>
+            <text x="92" y="127" text-anchor="middle" font-size="12">Prime sequence</text>
+          </g>
+          <g class="node" data-id="dec-transformer">
+            <rect x="213" y="108" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+            <text x="273" y="142" text-anchor="middle" font-size="12">Transformer</text>
+          </g>
+          <g class="node" data-id="last-hiddens">
+            <rect x="353" y="108" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+            <text x="413" y="134" text-anchor="middle" font-size="12">Last layer</text>
+            <text x="413" y="150" text-anchor="middle" font-size="12">hiddens</text>
+          </g>
+          <g class="node" data-id="logits">
+            <rect x="503" y="108" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+            <text x="563" y="142" text-anchor="middle" font-size="12">Logits</text>
+          </g>
+          <g class="node" data-id="next-token">
+            <rect x="682.5" y="74.5" width="100" height="38.5" rx="6" ry="6" fill="var(--bg-card)" stroke="rgba(126,207,114,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="733" y="90" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Next-token</text>
+            <text x="733" y="104" text-anchor="middle" font-size="11" fill="var(--text-secondary)">prediction</text>
+          </g>
+          <g class="node" data-id="pf-lite">
+            <rect x="803" y="74.5" width="100" height="38.5" rx="6" ry="6" fill="var(--bg-card)" stroke="rgba(126,207,114,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="853" y="97" text-anchor="middle" font-size="11" fill="var(--text-secondary)">PF-lite</text>
+          </g>
+          <g class="node" data-id="contrastive-bar">
+            <rect x="682.5" y="131" width="100" height="42" rx="6" ry="6" fill="var(--bg-card)" stroke="rgba(126,207,114,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="733" y="156" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Contrastive bar</text>
+          </g>
+          <g class="node" data-id="input-proj">
+            <rect x="829" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+            <text x="889" y="303" text-anchor="middle" font-size="12">Input projection</text>
+          </g>
+          <g class="node" data-id="adp-transformer">
+            <rect x="689" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+            <text x="749" y="303" text-anchor="middle" font-size="12">Transformer</text>
+          </g>
+          <g class="node" data-id="to-logits">
+            <rect x="549" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+            <text x="609" y="303" text-anchor="middle" font-size="12">To logits</text>
+          </g>
+          <g class="node" data-id="fsm">
+            <rect x="354.5" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-purple)" stroke-width="1" opacity="0.85"/>
+            <text x="415" y="295" text-anchor="middle" font-size="12">Finite-state</text>
+            <text x="415" y="311" text-anchor="middle" font-size="12">machine (FSM)</text>
+          </g>
+          <g class="node" data-id="top-p">
+            <rect x="204" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-purple)" stroke-width="1" opacity="0.85"/>
+            <text x="264" y="295" text-anchor="middle" font-size="12">Top-p</text>
+            <text x="264" y="311" text-anchor="middle" font-size="12">sampling</text>
+          </g>
+          <g class="node" data-id="batch-prime">
+            <rect x="29" y="417" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="89" y="436" text-anchor="middle" font-size="11">Prime sequence</text>
+          </g>
+          <g class="node" data-id="batch-gen">
+            <rect x="30" y="455" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="90" y="474" text-anchor="middle" font-size="11">Gen. continuation</text>
+          </g>
+          <g class="node" data-id="batch-real">
+            <rect x="29" y="495" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="89" y="514" text-anchor="middle" font-size="11">Real continuation</text>
+          </g>
+          <g class="node" data-id="batch-mismatch">
+            <rect x="30" y="535" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="90" y="554" text-anchor="middle" font-size="11">Real mismatched</text>
+          </g>
+          <g class="node" data-id="encoder">
+            <rect x="201" y="464" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="261" y="498" text-anchor="middle" font-size="12">Encoder</text>
+          </g>
+          <g class="node" data-id="cross-attn">
+            <rect x="348" y="464" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="408" y="498" text-anchor="middle" font-size="12">Cross-attention</text>
+          </g>
+          <g class="node" data-id="bar-head">
+            <rect x="499" y="414" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="559" y="440" text-anchor="middle" font-size="12">Bar-level</text>
+            <text x="559" y="456" text-anchor="middle" font-size="12">head</text>
+          </g>
+          <g class="node" data-id="token-head">
+            <rect x="499" y="511" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="559" y="537" text-anchor="middle" font-size="12">Token</text>
+            <text x="559" y="553" text-anchor="middle" font-size="12">head</text>
+          </g>
+          <g class="node" data-id="global-pool">
+            <rect x="655" y="414" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="715" y="440" text-anchor="middle" font-size="12">Global</text>
+            <text x="715" y="456" text-anchor="middle" font-size="12">pooling</text>
+          </g>
+          <g class="node" data-id="mean-token">
+            <rect x="655" y="511" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="715" y="537" text-anchor="middle" font-size="12">Mean</text>
+            <text x="715" y="553" text-anchor="middle" font-size="12">token score</text>
+          </g>
+          <g class="node" data-id="global-score">
+            <rect x="816" y="464" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="876" y="498" text-anchor="middle" font-size="12">Global score</text>
+          </g>
+        </svg>
+
+        <div class="tooltip" id="arch-tooltip">
+          <div class="tt-title"></div>
+          <div class="tt-body"></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item" data-zone="generation"><div class="legend-swatch" style="background:rgba(92,214,200,0.1); border-color:var(--accent-teal);"></div>Generation Loop</div>
+        <div class="legend-item" data-zone="decoder"><div class="legend-swatch" style="background:var(--accent-green-dim); border-color:var(--accent-green);"></div>Decoder (Frozen)</div>
+        <div class="legend-item" data-zone="adapter"><div class="legend-swatch" style="background:var(--accent-blue-dim); border-color:var(--accent-blue);"></div>Adapter</div>
+        <div class="legend-item" data-zone="sampler"><div class="legend-swatch" style="background:var(--accent-purple-dim); border-color:var(--accent-purple);"></div>Sampler</div>
+        <div class="legend-item" data-zone="batch"><div class="legend-swatch" style="background:var(--accent-gray-dim); border-color:var(--accent-gray);"></div>Batch</div>
+        <div class="legend-item" data-zone="discriminator"><div class="legend-swatch" style="background:var(--accent-red-dim); border-color:var(--accent-red);"></div>Discriminator</div>
+      </div>
+    </div>
+
+    <!-- SCST Training Loop Diagram -->
+    <div class="diagram-panel" id="panel-scst">
+      <div class="diagram-container" id="scst-container">
+        <svg class="diagram" id="scst-svg" viewBox="0 0 820 738" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="scst-ah-default" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <polygon points="0,1 8,4 0,7" fill="var(--arrow-default)"/>
+            </marker>
+            <marker id="scst-ah-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <polygon points="0,1 8,4 0,7" fill="var(--accent-green)"/>
+            </marker>
+            <marker id="scst-ah-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+              <polygon points="0,1 8,4 0,7" fill="#cc4444"/>
+            </marker>
+            <pattern id="scst-hatch-teal" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(92,214,200,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="scst-hatch-blue" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(111,163,247,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="scst-hatch-red" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(240,112,112,0.07)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="scst-hatch-green" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(126,207,114,0.08)" stroke-width="1.5"/>
+            </pattern>
+            <pattern id="scst-hatch-gray" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(124,130,144,0.07)" stroke-width="1.5"/>
+            </pattern>
+          </defs>
+
+          <!-- ZONE BACKGROUNDS -->
+          <rect class="zone-bg" data-zone="generation" x="469" y="295" width="350" height="220" rx="16" ry="16" fill="url(#scst-hatch-teal)" stroke="rgba(92,214,200,0.2)" stroke-width="1" stroke-dasharray="6 4"/>
+          <rect class="zone-bg" data-zone="decoder" x="485" y="311" width="320" height="100" rx="12" ry="12" fill="url(#scst-hatch-green)" stroke="rgba(126,207,114,0.25)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="adapter" x="485.5" y="440" width="320" height="295" rx="16" ry="16" fill="url(#scst-hatch-blue)" stroke="rgba(111,163,247,0.2)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="discriminator" x="45" y="310" width="320" height="310" rx="16" ry="16" fill="url(#scst-hatch-red)" stroke="rgba(240,112,112,0.25)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="optional" x="56" y="428" width="150" height="170" rx="12" ry="12" fill="rgba(240,112,112,0.03)" stroke="rgba(240,112,112,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+          <rect class="zone-bg" data-zone="phase" x="189" y="205" width="470" height="65" rx="10" ry="10" fill="url(#scst-hatch-gray)" stroke="rgba(124,130,144,0.2)" stroke-width="1"/>
+          <rect class="zone-bg" data-zone="regloss" x="495" y="614" width="300" height="98" rx="12" ry="12" fill="rgba(111,163,247,0.04)" stroke="rgba(111,163,247,0.18)" stroke-width="1"/>
+
+          <!-- ZONE LABELS -->
+          <text class="zone-label" data-zone="generation" x="747" y="292" text-anchor="middle" font-size="11" fill="rgba(92,214,200,0.5)">Generation loop</text>
+          <text class="zone-label" data-zone="decoder" x="727" y="308" text-anchor="middle" font-size="14" fill="rgba(126,207,114,0.55)">Frozen Decoder</text>
+          <text class="zone-label" data-zone="adapter" x="541" y="438" text-anchor="middle" font-size="14" fill="rgba(111,163,247,0.6)">Adapter</text>
+          <text class="zone-label" data-zone="discriminator" x="134" y="308" text-anchor="middle" font-size="14" fill="rgba(240,112,112,0.6)">Discriminator</text>
+          <text class="zone-label" data-zone="optional" x="117" y="426" text-anchor="middle" font-size="10" fill="rgba(240,112,112,0.4)">Optional update</text>
+          <text class="zone-label" data-zone="phase" x="252" y="204" text-anchor="middle" font-size="13" fill="rgba(124,130,144,0.5)">Phase Manager</text>
+          <text class="zone-label" data-zone="regloss" x="577" y="611" text-anchor="middle" font-size="10" fill="rgba(111,163,247,0.45)">Regularization losses</text>
+
+          <!-- ARROWS -->
+          <g class="arrow" data-from="prepare-batch" data-to="phase-decision">
+            <line x1="425" y1="60" x2="425" y2="88" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="phase-decision" data-to="warmup">
+            <polyline points="385,128 310,128 310,225" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+            <text class="edge-label" x="335" y="122">Disc weak</text>
+          </g>
+          <g class="arrow" data-from="phase-decision" data-to="refresh">
+            <line x1="425" y1="168" x2="425" y2="225" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+            <text class="edge-label" x="433" y="193">Disc okay</text>
+          </g>
+          <g class="arrow" data-from="phase-decision" data-to="rl-only">
+            <polyline points="465,128 540,128 540,225" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+            <text class="edge-label" x="515" y="122">Disc strong</text>
+          </g>
+          <g class="arrow" data-from="warmup" data-to="discriminator-zone">
+            <polyline points="280,257 280,289 216.5,289 216.5,310" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="refresh" data-to="discriminator-zone">
+            <polyline points="395,257 395,294 285,294 285,310" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="refresh" data-to="decoder-zone">
+            <polyline points="455,257 455,287 565,287 565,311" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="rl-only" data-to="decoder-zone">
+            <polyline points="570,258 570,281 645,281 645,311" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="real-seq" data-to="loss-comp">
+            <polyline points="132.5,399 132.5,405 247.5,405 247.5,442" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="fake-seq" data-to="loss-comp">
+            <line x1="307.5" y1="399" x2="307.5" y2="442" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="greedy-hiddens" data-to="greedy-cont">
+            <line x1="600.5" y1="391" x2="600.5" y2="450" stroke="var(--accent-green)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#scst-ah-green)" opacity="0.6"/>
+          </g>
+          <g class="arrow" data-from="sampled-hiddens" data-to="sampled-cont">
+            <line x1="745.5" y1="391" x2="745.5" y2="450" stroke="var(--accent-green)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#scst-ah-green)" opacity="0.6"/>
+          </g>
+          <g class="arrow" data-from="greedy-cont" data-to="rl-loss">
+            <line x1="570.5" y1="506" x2="570.5" y2="526" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="sampled-cont" data-to="rl-loss">
+            <polyline points="685.5,506 685.5,554 631,554" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="sampled-cont" data-to="regloss-zone">
+            <line x1="746.5" y1="506" x2="746.5" y2="614" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="greedy-cont" data-to="fake-seq">
+            <polyline points="487,478 412,478 412,369 338,369" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#scst-ah-default)"/>
+            <text class="edge-label" x="442" y="474">No grad</text>
+          </g>
+          <g class="arrow" data-from="discriminator-zone" data-to="rl-loss">
+            <polyline points="365,554 510,554" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+            <text class="edge-label" x="424" y="548">Reward signal</text>
+          </g>
+          <g class="arrow" data-from="loss-comp" data-to="feature-match">
+            <polyline points="285,502 285,643 516,643" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#scst-ah-default)"/>
+            <text class="edge-label" x="407" y="638">No grad</text>
+          </g>
+          <g class="arrow" data-from="loss-comp" data-to="opt-real-seq">
+            <polyline points="206,522 226,522 277.5,522 277.5,502" fill="none" stroke="#cc4444" stroke-width="1.1" stroke-dasharray="4 4" marker-end="url(#scst-ah-red)" opacity="0.5"/>
+          </g>
+          <g class="arrow" data-from="param-updates" data-to="prepare-batch">
+            <polyline points="163,692 7,692 7,30 365,30" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="rl-loss-to-param" data-to="param-updates">
+            <line x1="205" y1="620" x2="207" y2="648" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#scst-ah-default)"/>
+          </g>
+          <g class="arrow" data-from="param-updates" data-to="reg-losses">
+            <line x1="251" y1="692" x2="495" y2="692" stroke="var(--arrow-default)" stroke-width="1.3"/>
+            <polygon points="251,692 258,689 256,692 258,695" fill="var(--arrow-default)"/>
+          </g>
+
+          <!-- NODES -->
+          <g class="node" data-id="prepare-batch">
+            <rect x="365" y="0" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.3"/>
+            <text x="425" y="34" text-anchor="middle" font-size="12.5">Prepare batch</text>
+          </g>
+          <g class="node" data-id="phase-decision">
+            <path class="diamond" d="M425,88 L465,128 L425,168 L385,128 Z" fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.3"/>
+            <text x="425" y="132" text-anchor="middle" font-size="12.5">Phase?</text>
+          </g>
+          <g class="node" data-id="warmup">
+            <rect x="220" y="225" width="120" height="32" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="280" y="245" text-anchor="middle" font-size="12">Warm-up</text>
+          </g>
+          <g class="node" data-id="refresh">
+            <rect x="365" y="225" width="120" height="32" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="425" y="245" text-anchor="middle" font-size="12">Refresh</text>
+          </g>
+          <g class="node" data-id="rl-only">
+            <rect x="510" y="225" width="120" height="33" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+            <text x="570" y="245" text-anchor="middle" font-size="12">RL-only</text>
+          </g>
+          <g class="node" data-id="real-seq">
+            <rect x="72.5" y="339" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="133" y="365" text-anchor="middle" font-size="12">'Real'</text>
+            <text x="133" y="381" text-anchor="middle" font-size="12">sequence</text>
+          </g>
+          <g class="node" data-id="fake-seq">
+            <rect x="217.5" y="339" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="278" y="365" text-anchor="middle" font-size="12">'Fake'</text>
+            <text x="278" y="381" text-anchor="middle" font-size="12">sequence</text>
+          </g>
+          <g class="node" data-id="loss-comp">
+            <rect x="217.5" y="442" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+            <text x="278" y="468" text-anchor="middle" font-size="12">Loss</text>
+            <text x="278" y="484" text-anchor="middle" font-size="12">computation</text>
+          </g>
+          <g class="node" data-id="opt-real-seq">
+            <rect x="73" y="442" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="#cc4444" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+            <text x="133" y="468" text-anchor="middle" font-size="12" fill="var(--text-secondary)">'Real'</text>
+            <text x="133" y="484" text-anchor="middle" font-size="12" fill="var(--text-secondary)">sequence</text>
+          </g>
+          <g class="node" data-id="mismatch-seq">
+            <rect x="71" y="527" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="#cc4444" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+            <text x="131" y="551" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Mismatched 'real'</text>
+            <text x="131" y="567" text-anchor="middle" font-size="11" fill="var(--text-secondary)">sequence</text>
+          </g>
+          <g class="node" data-id="greedy-hiddens">
+            <rect x="510.5" y="331" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+            <text x="571" y="357" text-anchor="middle" font-size="12">Greedy</text>
+            <text x="571" y="373" text-anchor="middle" font-size="12">hiddens</text>
+          </g>
+          <g class="node" data-id="sampled-hiddens">
+            <rect x="655.5" y="331" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+            <text x="716" y="357" text-anchor="middle" font-size="12">Sampled</text>
+            <text x="716" y="373" text-anchor="middle" font-size="12">hiddens</text>
+          </g>
+          <g class="node" data-id="greedy-cont">
+            <rect x="510.5" y="450.33" width="120" height="55.82" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+            <text x="571" y="474" text-anchor="middle" font-size="12">Greedy</text>
+            <text x="571" y="490" text-anchor="middle" font-size="12">continuation</text>
+          </g>
+          <g class="node" data-id="sampled-cont">
+            <rect x="655.5" y="450.33" width="120" height="55.82" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+            <text x="716" y="474" text-anchor="middle" font-size="12">Sampled</text>
+            <text x="716" y="490" text-anchor="middle" font-size="12">continuation</text>
+          </g>
+          <g class="node" data-id="rl-loss">
+            <rect x="510.5" y="525.68" width="120" height="55.82" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+            <text x="571" y="558" text-anchor="middle" font-size="12">RL loss</text>
+          </g>
+          <g class="node" data-id="feature-match">
+            <rect x="516.5" y="628" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="577" y="647" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">Feature match</text>
+          </g>
+          <g class="node" data-id="policy-entropy">
+            <rect x="656.5" y="628" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="717" y="647" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">Policy entropy</text>
+          </g>
+          <g class="node" data-id="teacher-forced">
+            <rect x="516.5" y="669" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="577" y="688" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">Teacher-forced</text>
+          </g>
+          <g class="node" data-id="kl-reg">
+            <rect x="659" y="669" width="120" height="28" rx="5" ry="5" fill="var(--bg-card)" stroke="rgba(111,163,247,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+            <text x="719" y="687" text-anchor="middle" font-size="11.5" fill="var(--text-secondary)">KL policy reg.</text>
+          </g>
+          <g class="node" data-id="param-updates">
+            <path class="diamond" d="M207,648 L251,692 L207,736 L163,692 Z" fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.8"/>
+            <text x="207" y="688" text-anchor="middle" font-size="12">Param</text>
+            <text x="207" y="704" text-anchor="middle" font-size="12">updates</text>
+          </g>
+        </svg>
+
+        <div class="tooltip" id="scst-tooltip">
+          <div class="tt-title"></div>
+          <div class="tt-body"></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item" data-zone="phase"><div class="legend-swatch" style="background:var(--accent-gray-dim); border-color:var(--accent-gray);"></div>Phase Manager</div>
+        <div class="legend-item" data-zone="decoder"><div class="legend-swatch" style="background:var(--accent-green-dim); border-color:var(--accent-green);"></div>Frozen Decoder</div>
+        <div class="legend-item" data-zone="generation"><div class="legend-swatch" style="background:rgba(92,214,200,0.1); border-color:var(--accent-teal);"></div>Generation Loop</div>
+        <div class="legend-item" data-zone="adapter"><div class="legend-swatch" style="background:var(--accent-blue-dim); border-color:var(--accent-blue);"></div>Adapter (Trainable)</div>
+        <div class="legend-item" data-zone="discriminator"><div class="legend-swatch" style="background:var(--accent-red-dim); border-color:var(--accent-red);"></div>Discriminator</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer>
+    <p>Built with Tone.js & @tonejs/midi</p>
+  </footer>
+
+  <!-- CDN Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
+
+  <!-- App Scripts -->
+  <script src="js/diagrams.js"></script>
+  <script src="js/midi-player.js"></script>
+  <script src="js/piano-roll.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCST Architecture — Pre-training & Generation</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0d0f12;
+    --bg-card: #1a1d24;
+    --border-default: #2a2e38;
+    --text-primary: #e8eaed;
+    --text-secondary: #9ba1ad;
+    --text-muted: #636a78;
+    --accent-teal: #5cd6c8;
+    --accent-blue: #6fa3f7;
+    --accent-blue-dim: rgba(111, 163, 247, 0.15);
+    --accent-red: #f07070;
+    --accent-red-dim: rgba(240, 112, 112, 0.12);
+    --accent-green: #7ecf72;
+    --accent-green-dim: rgba(126, 207, 114, 0.12);
+    --accent-purple: #b392d0;
+    --accent-purple-dim: rgba(179, 146, 208, 0.12);
+    --accent-gray: #7c8290;
+    --accent-gray-dim: rgba(124, 130, 144, 0.12);
+    --arrow-default: #4a4f5c;
+    --arrow-highlight: #6fa3f7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(92,214,200,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,214,200,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .page-wrapper { position: relative; z-index: 1; padding: 32px 40px 60px; }
+  header { margin-bottom: 28px; display: flex; align-items: baseline; gap: 16px; }
+  header h1 { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+  header .subtitle { font-size: 13px; color: var(--text-muted); }
+  .diagram-container { position: relative; width: 992px; height: 586px; margin: 0 auto; }
+  svg.diagram { width: 992px; height: 586px; display: block; }
+
+  .node { cursor: pointer; transition: filter 0.25s ease, opacity 0.25s ease; }
+  .node rect { transition: fill 0.2s ease, stroke 0.2s ease, filter 0.25s ease; }
+  .node text { font-family: 'DM Sans', sans-serif; fill: var(--text-primary); pointer-events: none; }
+  .node:hover rect { filter: brightness(1.3); }
+
+  .arrow { transition: opacity 0.3s ease; }
+  .arrow line, .arrow path, .arrow polyline { transition: stroke 0.3s ease, stroke-width 0.3s ease; }
+  .arrow polygon { transition: fill 0.3s ease; }
+
+  .diagram.has-hover .arrow:not(.highlight) { opacity: 0.12; }
+  .diagram.has-hover .node:not(.highlight-node) { opacity: 0.35; }
+  .diagram.has-hover .zone-bg:not(.highlight-zone) { opacity: 0.25; }
+  .diagram.has-hover .edge-label:not(.highlight-label) { opacity: 0.15; }
+
+  .arrow.highlight line, .arrow.highlight path, .arrow.highlight polyline { stroke: var(--arrow-highlight) !important; stroke-width: 2.2px; }
+  .arrow.highlight polygon { fill: var(--arrow-highlight) !important; stroke: var(--arrow-highlight) !important; }
+
+  .zone-bg { transition: opacity 0.3s ease, stroke 0.3s ease, filter 0.3s ease; cursor: pointer; pointer-events: all; }
+  .zone-label { font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: 0.5px; pointer-events: all; cursor: pointer; }
+
+  .zone-bg.highlight-zone { opacity: 1 !important; stroke-width: 2.5px; }
+  .zone-bg.highlight-zone[data-zone="generation"] { stroke: rgba(92,214,200,0.6) !important; filter: brightness(2) drop-shadow(0 0 14px rgba(92,214,200,0.35)); }
+  .zone-bg.highlight-zone[data-zone="decoder"] { stroke: rgba(126,207,114,0.7) !important; filter: brightness(2) drop-shadow(0 0 14px rgba(126,207,114,0.4)); }
+  .zone-bg.highlight-zone[data-zone="pretrain-losses"] { stroke: rgba(126,207,114,0.5) !important; filter: brightness(2) drop-shadow(0 0 10px rgba(126,207,114,0.3)); }
+  .zone-bg.highlight-zone[data-zone="adapter"] { stroke: rgba(111,163,247,0.6) !important; filter: brightness(2) drop-shadow(0 0 14px rgba(111,163,247,0.35)); }
+  .zone-bg.highlight-zone[data-zone="sampler"] { stroke: rgba(179,146,208,0.6) !important; filter: brightness(2) drop-shadow(0 0 14px rgba(179,146,208,0.35)); }
+  .zone-bg.highlight-zone[data-zone="discriminator"] { stroke: rgba(240,112,112,0.7) !important; filter: brightness(2) drop-shadow(0 0 14px rgba(240,112,112,0.4)); }
+  .zone-bg.highlight-zone[data-zone="disc-encoder"] { stroke: rgba(240,112,112,0.5) !important; filter: brightness(2) drop-shadow(0 0 10px rgba(240,112,112,0.3)); }
+  .zone-bg.highlight-zone[data-zone="batch"] { stroke: rgba(124,130,144,0.5) !important; filter: brightness(2) drop-shadow(0 0 10px rgba(124,130,144,0.3)); }
+
+  .diagram.has-zone-hover .node:not(.zone-member) { opacity: 0.2; }
+  .diagram.has-zone-hover .arrow:not(.highlight) { opacity: 0.08; }
+  .diagram.has-zone-hover .zone-bg:not(.highlight-zone) { opacity: 0.15; }
+  .diagram.has-zone-hover .edge-label:not(.highlight-label) { opacity: 0.08; }
+  .diagram.has-zone-hover .zone-label:not(.highlight-zone-label) { opacity: 0.2; }
+  .node.zone-member { opacity: 0.85 !important; }
+  .node.zone-member rect { filter: brightness(1.15); }
+  .zone-label.highlight-zone-label { opacity: 1 !important; filter: brightness(1.5); }
+
+  .edge-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; fill: var(--text-muted); pointer-events: none; transition: opacity 0.3s ease; }
+
+  .tooltip { position: absolute; pointer-events: none; background: #1e2129; border: 1px solid #3d4250; border-radius: 10px; padding: 14px 18px; max-width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); opacity: 0; transform: translateY(6px); transition: opacity 0.2s ease, transform 0.2s ease; z-index: 100; backdrop-filter: blur(12px); }
+  .tooltip.visible { opacity: 1; transform: translateY(0); }
+  .tooltip .tt-title { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--accent-teal); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tooltip .tt-body { font-size: 13px; color: var(--text-secondary); line-height: 1.55; }
+
+  .legend { display: flex; gap: 24px; justify-content: center; margin-top: 24px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; transition: color 0.2s ease; }
+  .legend-item:hover { color: var(--text-primary); }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid; }
+
+  /* Hatching patterns */
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+  <header>
+    <h1>SCST Architecture</h1>
+    <span class="subtitle">Pre-training & generation pipeline — hover to explore</span>
+  </header>
+
+  <div class="diagram-container">
+    <svg class="diagram" viewBox="0 0 992 586" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ah-default" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0,1 8,4 0,7" fill="var(--arrow-default)"/>
+        </marker>
+        <marker id="ah-green" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0,1 8,4 0,7" fill="var(--accent-green)"/>
+        </marker>
+        <pattern id="hatch-teal" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(92,214,200,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-green" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(126,207,114,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-blue" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(111,163,247,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-purple" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(179,146,208,0.08)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-red" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(240,112,112,0.07)" stroke-width="1.5"/>
+        </pattern>
+        <pattern id="hatch-gray" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="12" stroke="rgba(124,130,144,0.07)" stroke-width="1.5"/>
+        </pattern>
+      </defs>
+
+      <!-- ═══════ ZONE BACKGROUNDS ═══════ -->
+
+      <!-- Generation loop (teal, outermost) -->
+      <rect class="zone-bg" data-zone="generation" x="23" y="17" width="968" height="348" rx="20" ry="20"
+            fill="url(#hatch-teal)" stroke="rgba(92,214,200,0.2)" stroke-width="1" stroke-dasharray="6 4"/>
+
+      <!-- Decoder (green) -->
+      <rect class="zone-bg" data-zone="decoder" x="183" y="38" width="780" height="170" rx="14" ry="14"
+            fill="url(#hatch-green)" stroke="rgba(126,207,114,0.25)" stroke-width="1"/>
+
+      <!-- Losses during pre-training (green sub-zone) -->
+      <rect class="zone-bg" data-zone="pretrain-losses" x="660.5" y="58" width="260" height="130" rx="12" ry="12"
+            fill="rgba(126,207,114,0.04)" stroke="rgba(126,207,114,0.18)" stroke-width="1"/>
+
+      <!-- Adapter (blue) -->
+      <rect class="zone-bg" data-zone="adapter" x="529" y="249" width="440" height="100" rx="12" ry="12"
+            fill="url(#hatch-blue)" stroke="rgba(111,163,247,0.2)" stroke-width="1"/>
+
+      <!-- Sampler (purple) -->
+      <rect class="zone-bg" data-zone="sampler" x="184" y="249" width="310" height="100" rx="12" ry="12"
+            fill="url(#hatch-purple)" stroke="rgba(179,146,208,0.2)" stroke-width="1"/>
+
+      <!-- Batch (gray) -->
+      <rect class="zone-bg" data-zone="batch" x="16" y="399" width="146" height="186" rx="12" ry="12"
+            fill="url(#hatch-gray)" stroke="rgba(124,130,144,0.2)" stroke-width="1"/>
+
+      <!-- Discriminator (red) -->
+      <rect class="zone-bg" data-zone="discriminator" x="183" y="399" width="790" height="186" rx="14" ry="14"
+            fill="url(#hatch-red)" stroke="rgba(240,112,112,0.25)" stroke-width="1"/>
+
+      <!-- Disc encoder sub-zone -->
+      <rect class="zone-bg" data-zone="disc-encoder" x="189" y="457.5" width="291.5" height="76" rx="10" ry="10"
+            fill="rgba(240,112,112,0.03)" stroke="rgba(240,112,112,0.15)" stroke-width="1" stroke-dasharray="4 4"/>
+
+
+      <!-- ═══════ ZONE LABELS ═══════ -->
+
+      <text class="zone-label" data-zone="generation" x="126" y="15" text-anchor="middle" font-size="13" fill="rgba(92,214,200,0.5)">Generation loop</text>
+      <text class="zone-label" data-zone="decoder" x="263" y="37" text-anchor="middle" font-size="14" fill="rgba(126,207,114,0.55)">Decoder</text>
+      <text class="zone-label" data-zone="pretrain-losses" x="756" y="59" text-anchor="middle" font-size="11" fill="rgba(126,207,114,0.45)">Losses during pre-training</text>
+      <text class="zone-label" data-zone="decoder" x="840" y="37" text-anchor="middle" font-size="10" fill="rgba(126,207,114,0.35)">Frozen during generation in SCST</text>
+      <text class="zone-label" data-zone="adapter" x="581" y="247" text-anchor="middle" font-size="14" fill="rgba(111,163,247,0.6)">Adapter</text>
+      <text class="zone-label" data-zone="adapter" x="884" y="347" text-anchor="middle" font-size="10" fill="rgba(111,163,247,0.35)">identity initialization</text>
+      <text class="zone-label" data-zone="sampler" x="241" y="247" text-anchor="middle" font-size="14" fill="rgba(179,146,208,0.55)">Sampler</text>
+      <text class="zone-label" data-zone="batch" x="65" y="396" text-anchor="middle" font-size="14" fill="rgba(124,130,144,0.5)">Batch</text>
+      <text class="zone-label" data-zone="discriminator" x="265" y="394" text-anchor="middle" font-size="14" fill="rgba(240,112,112,0.6)">Discriminator</text>
+
+
+      <!-- ═══════ ARROWS ═══════ -->
+
+      <!-- Prime seq → Transformer (decoder) -->
+      <g class="arrow" data-from="prime-seq" data-to="dec-transformer">
+        <line x1="152" y1="123" x2="213" y2="123" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Transformer → Last layer hiddens -->
+      <g class="arrow" data-from="dec-transformer" data-to="last-hiddens">
+        <line x1="333" y1="138" x2="353" y2="138" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Last layer hiddens → Logits -->
+      <g class="arrow" data-from="last-hiddens" data-to="logits">
+        <line x1="473" y1="138" x2="503" y2="138" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Logits → Losses sub-zone (green dashed) -->
+      <g class="arrow" data-from="logits" data-to="pretrain-losses-zone">
+        <line x1="623" y1="138" x2="660.5" y2="138" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Losses → Transformer (training signal, green) -->
+      <g class="arrow" data-from="pretrain-losses-zone" data-to="dec-transformer">
+        <polyline points="660.5,90.5 660.5,88 273,88 273,108" fill="none" stroke="var(--accent-green)" stroke-width="1.3" marker-end="url(#ah-green)" opacity="0.6"/>
+      </g>
+
+      <!-- Last hiddens → Adapter input proj (dashed, during generation) -->
+      <g class="arrow" data-from="last-hiddens" data-to="input-proj">
+        <polyline points="413,168 413,227 889,227 889,269" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="6 6" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="680" y="222">During generation</text>
+      </g>
+
+      <!-- Adapter: Input proj → Transformer -->
+      <g class="arrow" data-from="input-proj" data-to="adp-transformer">
+        <line x1="829" y1="299" x2="809" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Adapter: Transformer → To logits -->
+      <g class="arrow" data-from="adp-transformer" data-to="to-logits">
+        <line x1="689" y1="299" x2="669" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Adapter: To logits → Sampler -->
+      <g class="arrow" data-from="to-logits" data-to="sampler-zone">
+        <line x1="549" y1="299" x2="494" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Sampler: FSM → Top-p -->
+      <g class="arrow" data-from="fsm" data-to="top-p">
+        <line x1="354.5" y1="299" x2="324" y2="299" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Sampler → Prime seq (append token, loop back) -->
+      <g class="arrow" data-from="top-p" data-to="prime-seq">
+        <polyline points="204,299 92,299 92,153" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="78" y="232">Append token</text>
+      </g>
+
+      <!-- Prime seq → Batch (dashed) -->
+      <g class="arrow" data-from="prime-seq" data-to="batch-zone">
+        <polyline points="23,191 7,191 7,470 29,470" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Batch → Discriminator -->
+      <g class="arrow" data-from="batch-zone" data-to="discriminator-zone">
+        <line x1="162" y1="492" x2="183" y2="492" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Encoder → Cross-attention (prime context) -->
+      <g class="arrow" data-from="encoder" data-to="cross-attn">
+        <polyline points="261,464 261,444 408,444 408,464" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="334" y="438">Prime context</text>
+      </g>
+
+      <!-- Encoder → Cross-attention (continuation embedding) -->
+      <g class="arrow" data-from="encoder" data-to="cross-attn-bot">
+        <polyline points="261,524 261,548 408,548 408,524" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+        <text class="edge-label" x="316" y="560">Continuation embedding</text>
+      </g>
+
+      <!-- Cross-attn → Bar-level head -->
+      <g class="arrow" data-from="cross-attn" data-to="bar-head">
+        <polyline points="438,464 438,444 499,444" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Cross-attn → Token head -->
+      <g class="arrow" data-from="cross-attn" data-to="token-head">
+        <polyline points="438,524 438,541 499,541" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Bar-level head → Global pooling -->
+      <g class="arrow" data-from="bar-head" data-to="global-pool">
+        <line x1="619" y1="444" x2="655" y2="444" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Token head → Mean token score -->
+      <g class="arrow" data-from="token-head" data-to="mean-token">
+        <line x1="619" y1="541" x2="655" y2="541" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Global pooling → Global score -->
+      <g class="arrow" data-from="global-pool" data-to="global-score">
+        <polyline points="775,444 795.5,444 795.5,479 816,479" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+      <!-- Mean token → Global score -->
+      <g class="arrow" data-from="mean-token" data-to="global-score">
+        <polyline points="775,541 795.5,541 795.5,509 816,509" fill="none" stroke="var(--arrow-default)" stroke-width="1.3" marker-end="url(#ah-default)"/>
+      </g>
+
+
+      <!-- ═══════ NODES ═══════ -->
+
+      <!-- Prime sequence (outside decoder) -->
+      <g class="node" data-id="prime-seq">
+        <rect x="32" y="93" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--border-default)" stroke-width="1.3"/>
+        <text x="92" y="127" text-anchor="middle" font-size="12">Prime sequence</text>
+      </g>
+
+      <!-- Decoder: Transformer -->
+      <g class="node" data-id="dec-transformer">
+        <rect x="213" y="108" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+        <text x="273" y="142" text-anchor="middle" font-size="12">Transformer</text>
+      </g>
+
+      <!-- Decoder: Last layer hiddens -->
+      <g class="node" data-id="last-hiddens">
+        <rect x="353" y="108" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+        <text x="413" y="134" text-anchor="middle" font-size="12">Last layer</text>
+        <text x="413" y="150" text-anchor="middle" font-size="12">hiddens</text>
+      </g>
+
+      <!-- Decoder: Logits -->
+      <g class="node" data-id="logits">
+        <rect x="503" y="108" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="1" opacity="0.85"/>
+        <text x="563" y="142" text-anchor="middle" font-size="12">Logits</text>
+      </g>
+
+      <!-- Pre-training losses: Next-token -->
+      <g class="node" data-id="next-token">
+        <rect x="682.5" y="74.5" width="100" height="38.5" rx="6" ry="6" fill="var(--bg-card)" stroke="rgba(126,207,114,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="733" y="90" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Next-token</text>
+        <text x="733" y="104" text-anchor="middle" font-size="11" fill="var(--text-secondary)">prediction</text>
+      </g>
+
+      <!-- Pre-training losses: PF-lite -->
+      <g class="node" data-id="pf-lite">
+        <rect x="803" y="74.5" width="100" height="38.5" rx="6" ry="6" fill="var(--bg-card)" stroke="rgba(126,207,114,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="853" y="97" text-anchor="middle" font-size="11" fill="var(--text-secondary)">PF-lite</text>
+      </g>
+
+      <!-- Pre-training losses: Contrastive bar -->
+      <g class="node" data-id="contrastive-bar">
+        <rect x="682.5" y="131" width="100" height="42" rx="6" ry="6" fill="var(--bg-card)" stroke="rgba(126,207,114,0.3)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="733" y="156" text-anchor="middle" font-size="11" fill="var(--text-secondary)">Contrastive bar</text>
+      </g>
+
+      <!-- Adapter: Input projection -->
+      <g class="node" data-id="input-proj">
+        <rect x="829" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+        <text x="889" y="303" text-anchor="middle" font-size="12">Input projection</text>
+      </g>
+
+      <!-- Adapter: Transformer -->
+      <g class="node" data-id="adp-transformer">
+        <rect x="689" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+        <text x="749" y="303" text-anchor="middle" font-size="12">Transformer</text>
+      </g>
+
+      <!-- Adapter: To logits -->
+      <g class="node" data-id="to-logits">
+        <rect x="549" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-blue)" stroke-width="1" opacity="0.85"/>
+        <text x="609" y="303" text-anchor="middle" font-size="12">To logits</text>
+      </g>
+
+      <!-- Sampler: FSM -->
+      <g class="node" data-id="fsm">
+        <rect x="354.5" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-purple)" stroke-width="1" opacity="0.85"/>
+        <text x="415" y="295" text-anchor="middle" font-size="12">Finite-state</text>
+        <text x="415" y="311" text-anchor="middle" font-size="12">machine (FSM)</text>
+      </g>
+
+      <!-- Sampler: Top-p -->
+      <g class="node" data-id="top-p">
+        <rect x="204" y="269" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-purple)" stroke-width="1" opacity="0.85"/>
+        <text x="264" y="295" text-anchor="middle" font-size="12">Top-p</text>
+        <text x="264" y="311" text-anchor="middle" font-size="12">sampling</text>
+      </g>
+
+      <!-- Batch items -->
+      <g class="node" data-id="batch-prime">
+        <rect x="29" y="417" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="89" y="436" text-anchor="middle" font-size="11">Prime sequence</text>
+      </g>
+      <g class="node" data-id="batch-gen">
+        <rect x="30" y="455" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="90" y="474" text-anchor="middle" font-size="11">Gen. continuation</text>
+      </g>
+      <g class="node" data-id="batch-real">
+        <rect x="29" y="495" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="89" y="514" text-anchor="middle" font-size="11">Real continuation</text>
+      </g>
+      <g class="node" data-id="batch-mismatch">
+        <rect x="30" y="535" width="120" height="30" rx="5" ry="5" fill="var(--bg-card)" stroke="var(--accent-gray)" stroke-width="1" opacity="0.8"/>
+        <text x="90" y="554" text-anchor="middle" font-size="11">Real mismatched</text>
+      </g>
+
+      <!-- Discriminator nodes -->
+      <g class="node" data-id="encoder">
+        <rect x="201" y="464" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="261" y="498" text-anchor="middle" font-size="12">Encoder</text>
+      </g>
+      <g class="node" data-id="cross-attn">
+        <rect x="348" y="464" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="408" y="498" text-anchor="middle" font-size="12">Cross-attention</text>
+      </g>
+      <g class="node" data-id="bar-head">
+        <rect x="499" y="414" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="559" y="440" text-anchor="middle" font-size="12">Bar-level</text>
+        <text x="559" y="456" text-anchor="middle" font-size="12">head</text>
+      </g>
+      <g class="node" data-id="token-head">
+        <rect x="499" y="511" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="559" y="537" text-anchor="middle" font-size="12">Token</text>
+        <text x="559" y="553" text-anchor="middle" font-size="12">head</text>
+      </g>
+      <g class="node" data-id="global-pool">
+        <rect x="655" y="414" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="715" y="440" text-anchor="middle" font-size="12">Global</text>
+        <text x="715" y="456" text-anchor="middle" font-size="12">pooling</text>
+      </g>
+      <g class="node" data-id="mean-token">
+        <rect x="655" y="511" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="715" y="537" text-anchor="middle" font-size="12">Mean</text>
+        <text x="715" y="553" text-anchor="middle" font-size="12">token score</text>
+      </g>
+      <g class="node" data-id="global-score">
+        <rect x="816" y="464" width="120" height="60" rx="9" ry="9" fill="var(--bg-card)" stroke="var(--accent-red)" stroke-width="1" opacity="0.85"/>
+        <text x="876" y="498" text-anchor="middle" font-size="12">Global score</text>
+      </g>
+    </svg>
+
+    <div class="tooltip" id="tooltip">
+      <div class="tt-title"></div>
+      <div class="tt-body"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:rgba(92,214,200,0.1); border-color:var(--accent-teal);"></div>Generation Loop</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent-green-dim); border-color:var(--accent-green);"></div>Decoder (Frozen)</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent-blue-dim); border-color:var(--accent-blue);"></div>Adapter</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent-purple-dim); border-color:var(--accent-purple);"></div>Sampler</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent-gray-dim); border-color:var(--accent-gray);"></div>Batch</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent-red-dim); border-color:var(--accent-red);"></div>Discriminator</div>
+  </div>
+</div>
+
+<script>
+const tooltips = {
+  'prime-seq':       { title: 'Prime Sequence', body: 'The input context fed to the decoder. During generation, sampled tokens are appended back here in an autoregressive loop.' },
+  'dec-transformer': { title: 'Decoder Transformer', body: 'The main autoregressive transformer that processes the prime sequence. Frozen during SCST generation — only the adapter is trained.' },
+  'last-hiddens':    { title: 'Last Layer Hiddens', body: 'Hidden state output from the transformer\'s final layer. Feeds both the logit head (for pre-training) and the adapter (during generation).' },
+  'logits':          { title: 'Logits', body: 'Raw unnormalized scores over the vocabulary, produced by the decoder\'s language model head from the last-layer hiddens.' },
+  'next-token':      { title: 'Next-Token Prediction', body: 'Standard autoregressive language modeling loss (cross-entropy). The primary pre-training objective.' },
+  'pf-lite':         { title: 'PF-lite', body: 'A lightweight "prefix-free" auxiliary loss used during pre-training to improve the model\'s structured generation capabilities.' },
+  'contrastive-bar': { title: 'Contrastive Bar Loss', body: 'Contrastive loss at the bar level that teaches the model to distinguish coherent musical bars from shuffled ones during pre-training.' },
+  'input-proj':      { title: 'Input Projection', body: 'Projects the frozen decoder\'s hidden states into the adapter\'s input space. First layer of the trainable adapter.' },
+  'adp-transformer': { title: 'Adapter Transformer', body: 'A smaller transformer within the adapter that refines the frozen decoder\'s representations. Initialized to identity so it starts as a pass-through.' },
+  'to-logits':       { title: 'To Logits', body: 'Projects the adapter\'s output back to vocabulary logits. These adapted logits are what get sampled during SCST generation.' },
+  'fsm':             { title: 'Finite-State Machine', body: 'Constrains the sampling to only produce structurally valid token sequences by masking out illegal transitions at each step.' },
+  'top-p':           { title: 'Top-p Sampling', body: 'Nucleus sampling that selects from the smallest set of tokens whose cumulative probability exceeds p, providing controlled diversity.' },
+  'batch-prime':     { title: 'Batch: Prime Sequence', body: 'The context/prompt portion of each training example in the batch.' },
+  'batch-gen':       { title: 'Batch: Generated Continuation', body: 'The model\'s own generated continuation (from the generation loop), used as the \'fake\' input to the discriminator.' },
+  'batch-real':      { title: 'Batch: Real Continuation', body: 'Ground-truth continuation from the training data, used as the \'real\' input to the discriminator.' },
+  'batch-mismatch':  { title: 'Batch: Real Mismatched', body: 'A real continuation paired with a different prime, serving as a hard negative for the discriminator\'s conditional reasoning.' },
+  'encoder':         { title: 'Discriminator Encoder', body: 'Encodes both the prime context and the continuation into shared representations for the cross-attention mechanism.' },
+  'cross-attn':      { title: 'Cross-Attention', body: 'Attends between the prime context encoding and the continuation embedding, enabling the discriminator to reason about coherence.' },
+  'bar-head':        { title: 'Bar-Level Head', body: 'Produces per-bar discrimination scores, assessing quality at a structural level (musical bars / phrase segments).' },
+  'token-head':      { title: 'Token Head', body: 'Produces per-token discrimination scores, providing fine-grained quality assessment at the individual token level.' },
+  'global-pool':     { title: 'Global Pooling', body: 'Aggregates bar-level scores into a single global representation via pooling (e.g. mean or attention pooling).' },
+  'mean-token':      { title: 'Mean Token Score', body: 'Averages the per-token scores into a single scalar, providing a token-level quality summary.' },
+  'global-score':    { title: 'Global Score', body: 'Final discrimination output combining bar-level and token-level signals. This scalar is the reward signal used in SCST training.' }
+};
+
+const connections = {
+  'prime-seq':       { out: ['prime-seq__dec-transformer', 'prime-seq__batch-zone'], in: ['top-p__prime-seq'] },
+  'dec-transformer': { out: ['dec-transformer__last-hiddens'], in: ['prime-seq__dec-transformer', 'pretrain-losses-zone__dec-transformer'] },
+  'last-hiddens':    { out: ['last-hiddens__logits', 'last-hiddens__input-proj'], in: ['dec-transformer__last-hiddens'] },
+  'logits':          { out: ['logits__pretrain-losses-zone'], in: ['last-hiddens__logits'] },
+  'next-token':      { out: [], in: [] },
+  'pf-lite':         { out: [], in: [] },
+  'contrastive-bar': { out: [], in: [] },
+  'input-proj':      { out: ['input-proj__adp-transformer'], in: ['last-hiddens__input-proj'] },
+  'adp-transformer': { out: ['adp-transformer__to-logits'], in: ['input-proj__adp-transformer'] },
+  'to-logits':       { out: ['to-logits__sampler-zone'], in: ['adp-transformer__to-logits'] },
+  'fsm':             { out: ['fsm__top-p'], in: [] },
+  'top-p':           { out: ['top-p__prime-seq'], in: ['fsm__top-p'] },
+  'batch-prime':     { out: [], in: [] },
+  'batch-gen':       { out: [], in: [] },
+  'batch-real':      { out: [], in: [] },
+  'batch-mismatch':  { out: [], in: [] },
+  'encoder':         { out: ['encoder__cross-attn', 'encoder__cross-attn-bot'], in: [] },
+  'cross-attn':      { out: ['cross-attn__bar-head', 'cross-attn__token-head'], in: ['encoder__cross-attn', 'encoder__cross-attn-bot'] },
+  'bar-head':        { out: ['bar-head__global-pool'], in: ['cross-attn__bar-head'] },
+  'token-head':      { out: ['token-head__mean-token'], in: ['cross-attn__token-head'] },
+  'global-pool':     { out: ['global-pool__global-score'], in: ['bar-head__global-pool'] },
+  'mean-token':      { out: ['mean-token__global-score'], in: ['token-head__mean-token'] },
+  'global-score':    { out: [], in: ['global-pool__global-score', 'mean-token__global-score'] }
+};
+
+const zoneMembership = {
+  'generation':      ['prime-seq', 'dec-transformer', 'last-hiddens', 'logits', 'next-token', 'pf-lite', 'contrastive-bar', 'input-proj', 'adp-transformer', 'to-logits', 'fsm', 'top-p'],
+  'decoder':         ['dec-transformer', 'last-hiddens', 'logits', 'next-token', 'pf-lite', 'contrastive-bar'],
+  'pretrain-losses': ['next-token', 'pf-lite', 'contrastive-bar'],
+  'adapter':         ['input-proj', 'adp-transformer', 'to-logits'],
+  'sampler':         ['fsm', 'top-p'],
+  'batch':           ['batch-prime', 'batch-gen', 'batch-real', 'batch-mismatch'],
+  'discriminator':   ['encoder', 'cross-attn', 'bar-head', 'token-head', 'global-pool', 'mean-token', 'global-score'],
+  'disc-encoder':    ['encoder', 'cross-attn']
+};
+
+const zoneBoundaryArrows = {
+  'generation':      ['top-p__prime-seq', 'prime-seq__dec-transformer', 'last-hiddens__input-proj', 'to-logits__sampler-zone', 'prime-seq__batch-zone'],
+  'decoder':         ['prime-seq__dec-transformer', 'dec-transformer__last-hiddens', 'last-hiddens__logits', 'logits__pretrain-losses-zone', 'pretrain-losses-zone__dec-transformer', 'last-hiddens__input-proj'],
+  'pretrain-losses': ['logits__pretrain-losses-zone', 'pretrain-losses-zone__dec-transformer'],
+  'adapter':         ['last-hiddens__input-proj', 'input-proj__adp-transformer', 'adp-transformer__to-logits', 'to-logits__sampler-zone'],
+  'sampler':         ['to-logits__sampler-zone', 'fsm__top-p', 'top-p__prime-seq'],
+  'batch':           ['prime-seq__batch-zone', 'batch-zone__discriminator-zone'],
+  'discriminator':   ['batch-zone__discriminator-zone', 'encoder__cross-attn', 'encoder__cross-attn-bot', 'cross-attn__bar-head', 'cross-attn__token-head', 'bar-head__global-pool', 'token-head__mean-token', 'global-pool__global-score', 'mean-token__global-score'],
+  'disc-encoder':    ['encoder__cross-attn', 'encoder__cross-attn-bot', 'cross-attn__bar-head', 'cross-attn__token-head']
+};
+
+// Build arrow map
+const arrowMap = {};
+document.querySelectorAll('.arrow').forEach(a => {
+  arrowMap[`${a.dataset.from}__${a.dataset.to}`] = a;
+});
+
+const svg = document.querySelector('.diagram');
+const tooltip = document.getElementById('tooltip');
+const ttTitle = tooltip.querySelector('.tt-title');
+const ttBody = tooltip.querySelector('.tt-body');
+
+function clearAll() {
+  svg.classList.remove('has-hover', 'has-zone-hover');
+  document.querySelectorAll('.highlight-node,.zone-member').forEach(n => n.classList.remove('highlight-node', 'zone-member'));
+  document.querySelectorAll('.arrow.highlight').forEach(a => a.classList.remove('highlight'));
+  document.querySelectorAll('.highlight-label').forEach(l => l.classList.remove('highlight-label'));
+  document.querySelectorAll('.highlight-zone').forEach(z => z.classList.remove('highlight-zone'));
+  document.querySelectorAll('.highlight-zone-label').forEach(l => l.classList.remove('highlight-zone-label'));
+  tooltip.classList.remove('visible');
+}
+
+const zoneTargets = {
+  'pretrain-losses-zone': 'pretrain-losses',
+  'sampler-zone': 'sampler',
+  'batch-zone': 'batch',
+  'discriminator-zone': 'discriminator'
+};
+
+// Node hover
+document.querySelectorAll('.node').forEach(node => {
+  const id = node.dataset.id;
+  node.addEventListener('mouseenter', (e) => {
+    e.stopPropagation();
+    clearAll();
+    svg.classList.add('has-hover');
+    node.classList.add('highlight-node');
+    const conn = connections[id] || { in: [], out: [] };
+    [...conn.in, ...conn.out].forEach(key => {
+      const arrow = arrowMap[key];
+      if (arrow) { arrow.classList.add('highlight'); arrow.querySelectorAll('.edge-label').forEach(l => l.classList.add('highlight-label')); }
+      const parts = key.split('__');
+      const otherId = parts[0] === id ? parts[1] : parts[0];
+      const otherNode = document.querySelector(`.node[data-id="${otherId}"]`);
+      if (otherNode) otherNode.classList.add('highlight-node');
+      if (zoneTargets[otherId]) {
+        const z = document.querySelector(`.zone-bg[data-zone="${zoneTargets[otherId]}"]`);
+        if (z) z.classList.add('highlight-zone');
+      }
+    });
+    const info = tooltips[id];
+    if (info) {
+      ttTitle.textContent = info.title;
+      ttBody.textContent = info.body;
+      const rect = node.getBoundingClientRect();
+      const cr = document.querySelector('.diagram-container').getBoundingClientRect();
+      let left = rect.right - cr.left + 14;
+      let top = rect.top - cr.top;
+      if (left + 300 > cr.width) left = rect.left - cr.left - 314;
+      if (top + 120 > cr.height) top = cr.height - 140;
+      if (top < 0) top = 8;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+      tooltip.classList.add('visible');
+    }
+  });
+  node.addEventListener('mouseleave', clearAll);
+});
+
+// Zone hover
+function activateZone(zoneId) {
+  clearAll();
+  svg.classList.add('has-zone-hover');
+  const bg = document.querySelector(`.zone-bg[data-zone="${zoneId}"]`);
+  if (bg) bg.classList.add('highlight-zone');
+  document.querySelectorAll(`.zone-label[data-zone="${zoneId}"]`).forEach(l => l.classList.add('highlight-zone-label'));
+
+  // Nested zones
+  const nested = { 'generation': ['decoder', 'pretrain-losses', 'adapter', 'sampler'], 'decoder': ['pretrain-losses'], 'discriminator': ['disc-encoder'] };
+  (nested[zoneId] || []).forEach(nz => {
+    const nb = document.querySelector(`.zone-bg[data-zone="${nz}"]`);
+    if (nb) nb.classList.add('highlight-zone');
+    document.querySelectorAll(`.zone-label[data-zone="${nz}"]`).forEach(l => l.classList.add('highlight-zone-label'));
+  });
+
+  (zoneMembership[zoneId] || []).forEach(nid => {
+    const n = document.querySelector(`.node[data-id="${nid}"]`);
+    if (n) n.classList.add('zone-member');
+  });
+  (zoneBoundaryArrows[zoneId] || []).forEach(key => {
+    const a = arrowMap[key];
+    if (a) { a.classList.add('highlight'); a.querySelectorAll('.edge-label').forEach(l => l.classList.add('highlight-label')); }
+  });
+}
+
+document.querySelectorAll('.zone-bg').forEach(bg => {
+  bg.addEventListener('mouseenter', () => activateZone(bg.dataset.zone));
+  bg.addEventListener('mouseleave', clearAll);
+});
+document.querySelectorAll('.zone-label').forEach(l => {
+  l.addEventListener('mouseenter', () => activateZone(l.dataset.zone));
+  l.addEventListener('mouseleave', clearAll);
+});
+document.querySelectorAll('.legend-item').forEach(item => {
+  const map = { 'generation loop': 'generation', 'decoder (frozen)': 'decoder', 'adapter': 'adapter', 'sampler': 'sampler', 'batch': 'batch', 'discriminator': 'discriminator' };
+  const z = map[item.textContent.trim().toLowerCase()];
+  if (z) { item.style.cursor = 'pointer'; item.addEventListener('mouseenter', () => activateZone(z)); item.addEventListener('mouseleave', clearAll); }
+});
+</script>
+</body>
+</html>
