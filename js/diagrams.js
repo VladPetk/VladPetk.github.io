@@ -56,6 +56,7 @@ class DiagramController {
         node.classList.add('highlight-node');
 
         const conn = this.connections[id] || { in: [], out: [] };
+        const connectedNodeIds = new Set();
         [...conn.in, ...conn.out].forEach(key => {
           const arrow = this.arrowMap[key];
           if (arrow) {
@@ -65,14 +66,25 @@ class DiagramController {
           const parts = key.split('__');
           const otherId = parts[0] === id ? parts[1] : parts[0];
           const otherNode = this.svg.querySelector(`.node[data-id="${otherId}"]`);
-          if (otherNode) otherNode.classList.add('highlight-node');
+          if (otherNode) {
+            otherNode.classList.add('highlight-node');
+            connectedNodeIds.add(otherId);
+          }
 
-          // Zone targets
+          // Zone targets (arrows pointing to zone boundaries)
           if (this.zoneTargets[otherId]) {
             const z = this.svg.querySelector(`.zone-bg[data-zone="${this.zoneTargets[otherId]}"]`);
             if (z) z.classList.add('highlight-zone');
           }
         });
+
+        // Light up zones that contain connected nodes
+        for (const [zoneId, members] of Object.entries(this.zoneMembership)) {
+          if (members.some(m => connectedNodeIds.has(m))) {
+            const bg = this.svg.querySelector(`.zone-bg[data-zone="${zoneId}"]`);
+            if (bg) bg.classList.add('highlight-zone');
+          }
+        }
 
         // Tooltip
         const info = this.tooltips[id];
@@ -132,28 +144,7 @@ class DiagramController {
   }
 
   attachZoneHovers() {
-    // Zone backgrounds
-    this.svg.querySelectorAll('.zone-bg').forEach(bg => {
-      bg.addEventListener('mouseenter', () => this.activateZone(bg.dataset.zone));
-      bg.addEventListener('mouseleave', () => this.clearAll());
-    });
-
-    // Zone labels
-    this.svg.querySelectorAll('.zone-label').forEach(l => {
-      l.addEventListener('mouseenter', () => this.activateZone(l.dataset.zone));
-      l.addEventListener('mouseleave', () => this.clearAll());
-    });
-  }
-
-  // Attach legend items (called from outside since legends are outside SVG)
-  attachLegend(legendContainer) {
-    legendContainer.querySelectorAll('.legend-item').forEach(item => {
-      const zoneId = item.dataset.zone;
-      if (zoneId) {
-        item.addEventListener('mouseenter', () => this.activateZone(zoneId));
-        item.addEventListener('mouseleave', () => this.clearAll());
-      }
-    });
+    // Zone hovers disabled — zones light up via node hover instead
   }
 }
 
@@ -338,12 +329,6 @@ function initDiagrams() {
   // Initialize controllers
   const archCtrl = new DiagramController('#arch-svg', '#arch-tooltip', '#arch-container', archConfig);
   const scstCtrl = new DiagramController('#scst-svg', '#scst-tooltip', '#scst-container', scstConfig);
-
-  // Attach legends
-  const archLegend = document.querySelector('#panel-arch .legend');
-  const scstLegend = document.querySelector('#panel-scst .legend');
-  if (archLegend) archCtrl.attachLegend(archLegend);
-  if (scstLegend) scstCtrl.attachLegend(scstLegend);
 
   // Tab switching
   document.querySelectorAll('.diagram-tab').forEach(tab => {

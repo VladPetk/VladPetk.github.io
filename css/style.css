@@ -639,7 +639,7 @@ section {
 
 .diagram-container {
   position: relative;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
@@ -801,13 +801,8 @@ svg.diagram {
   align-items: center;
   gap: var(--space-sm);
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
-  transition: color 0.2s ease;
-  cursor: pointer;
-}
-.legend-item:hover {
-  color: var(--text-primary);
 }
 
 .legend-swatch {
