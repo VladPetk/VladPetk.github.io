@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(wc:*)",
-      "WebFetch(domain:cdn.jsdelivr.net)"
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

@@ -7,7 +7,7 @@
   <meta name="description" content="Interactive showcase of a MIDI autoregressive transformer with Self-Critical Sequence Training for classical piano music generation.">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
   <section id="player">
     <div class="section-header">
       <h2>Listen & Explore</h2>
-      <p class="section-desc">Select a piece to hear the original and the model's continuation. Notes are color-coded: <span class="color-tag original">original</span> vs <span class="color-tag continuation">continuation</span></p>
+      <p class="section-desc">Select a piece to hear the prime and the model's continuation. Notes are color-coded: <span class="color-tag original">prime</span> vs <span class="color-tag continuation">continuation</span>. Switch between two different continuations to hear the model's variability.</p>
     </div>
 
     <div class="player-container">
@@ -82,6 +82,11 @@
           </div>
 
           <div class="controls-right">
+            <div class="variant-toggle">
+              <span class="variant-label">Continuation:</span>
+              <button class="variant-btn active" title="Continuation A">A</button>
+              <button class="variant-btn" title="Continuation B">B</button>
+            </div>
             <div class="now-playing" id="now-playing"></div>
           </div>
         </div>
@@ -584,9 +589,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
 
   <!-- App Scripts -->
-  <script src="js/diagrams.js?v=2"></script>
-  <script src="js/midi-player.js?v=2"></script>
-  <script src="js/piano-roll.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/diagrams.js?v=3"></script>
+  <script src="js/midi-player.js?v=3"></script>
+  <script src="js/piano-roll.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

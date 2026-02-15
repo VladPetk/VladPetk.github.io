@@ -48,30 +48,32 @@ class MidiPlayer {
   }
 
   /**
-   * Load a track (original + optional continuation).
+   * Load a track: one combined file (prime+continuation) plus a prime-only file.
+   * The prime file's duration determines where to split original vs continuation.
    * Returns { notes, duration } where notes have: midi, time, duration, velocity, source
    */
-  async loadTrack(originalUrl, continuationUrl) {
+  async loadTrack(combinedUrl, primeUrl) {
     if (this.onLoadStart) this.onLoadStart();
     this.stop();
 
     try {
-      const originalMidi = await Midi.fromUrl(originalUrl);
-      let allNotes = this._extractNotes(originalMidi, 'original', 0);
-      let totalDuration = originalMidi.duration;
+      // Load both MIDIs in parallel
+      const [combinedMidi, primeMidi] = await Promise.all([
+        Midi.fromUrl(combinedUrl),
+        Midi.fromUrl(primeUrl),
+      ]);
 
-      if (continuationUrl) {
-        const contMidi = await Midi.fromUrl(continuationUrl);
-        const contNotes = this._extractNotes(contMidi, 'continuation', totalDuration);
-        allNotes = allNotes.concat(contNotes);
-        totalDuration = totalDuration + contMidi.duration;
-      }
+      const primeDuration = primeMidi.duration;
+
+      // Extract all notes from the combined file,
+      // coloring based on whether they fall within the prime duration
+      const allNotes = this._extractNotesWithPrimeSplit(combinedMidi, primeDuration);
 
       // Sort by time
       allNotes.sort((a, b) => a.time - b.time);
 
       this.notes = allNotes;
-      this.duration = totalDuration;
+      this.duration = combinedMidi.duration;
 
       if (this.onLoadEnd) this.onLoadEnd();
       return { notes: this.notes, duration: this.duration };
@@ -82,13 +84,15 @@ class MidiPlayer {
     }
   }
 
-  _extractNotes(midi, source, timeOffset) {
+  _extractNotesWithPrimeSplit(midi, primeDuration) {
     const notes = [];
     midi.tracks.forEach((track, trackIdx) => {
       track.notes.forEach(note => {
+        // A note is "original" if it starts before the prime duration
+        const source = note.time < primeDuration ? 'original' : 'continuation';
         notes.push({
           midi: note.midi,
-          time: note.time + timeOffset,
+          time: note.time,
           duration: note.duration,
           velocity: note.velocity,
           source: source,

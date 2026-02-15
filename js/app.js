@@ -6,74 +6,114 @@
 
 const TRACKS = [
   {
-    id: 'bach-toccata',
-    composer: 'Bach',
-    title: 'Toccata BWV 915',
-    original: 'midi/Bwv0915 Toccata_clean.mid',
-    continuation: 'midi/Bwv0915 Toccata_clean_0.mid',
-  },
-  {
-    id: 'brahms-intermezzo',
-    composer: 'Brahms',
-    title: 'Intermezzo Op. 118 No. 2',
-    original: 'midi/brahms-intermezzo-op118-no2_clean.mid',
-    continuation: 'midi/brahms-intermezzo-op118-no2_clean_1.mid',
+    id: 'mozart-k545',
+    composer: 'Mozart',
+    title: 'Piano Sonata K. 545',
+    prime: 'public_gens/K545 Piano Sonata_clean_prime.mid',
+    continuations: [
+      'public_gens/K545 Piano Sonata_clean_0.mid',
+      'public_gens/K545 Piano Sonata_clean_1.mid',
+    ],
   },
   {
     id: 'chopin-etude',
     composer: 'Chopin',
     title: 'Etude Op. 10 No. 4',
-    original: 'midi/chopin-etude-op10-no4_clean.mid',
-    continuation: 'midi/chopin-etude-op10-no4_clean_0.mid',
-  },
-  {
-    id: 'clementi-opus36',
-    composer: 'Clementi',
-    title: 'Opus 36 No. 1, Mvt. 3',
-    original: 'midi/clementi_opus36_1_3_clean.mid',
-    continuation: 'midi/clementi_opus36_1_3_clean_1.mid',
-  },
-  {
-    id: 'schubert-moments',
-    composer: 'Schubert',
-    title: 'Moments Musicaux D780 No. 1',
-    original: 'midi/Moments musicaux op94 D780 n1_clean.mid',
-    continuation: 'midi/Moments musicaux op94 D780 n1_clean_0.mid',
-  },
-  {
-    id: 'beethoven-moonlight',
-    composer: 'Beethoven',
-    title: 'Moonlight Sonata, Mvt. 3',
-    original: 'midi/moonlt23_clean.mid',
-    continuation: 'midi/moonlt23_clean_1.mid',
+    prime: 'public_gens/chopin-etude-op10-no4_clean_prime.mid',
+    continuations: [
+      'public_gens/chopin-etude-op10-no4_clean_0.mid',
+      'public_gens/chopin-etude-op10-no4_clean_3.mid',
+    ],
   },
   {
     id: 'beethoven-hammerklavier',
     composer: 'Beethoven',
-    title: 'Hammerklavier Op. 106',
-    original: "midi/Piano Sonata n29 Op106 ''Hammerklavier''_clean.mid",
-    continuation: "midi/Piano Sonata n29 Op106 ''Hammerklavier''_clean_0.mid",
+    title: 'Hammerklavier Sonata, Op. 106',
+    prime: "public_gens/Piano Sonata n29 Op106 ''Hammerklavier''_clean_prime.mid",
+    continuations: [
+      "public_gens/Piano Sonata n29 Op106 ''Hammerklavier''_clean_0.mid",
+      "public_gens/Piano Sonata n29 Op106 ''Hammerklavier''_clean_1.mid",
+    ],
+  },
+  {
+    id: 'satie-gnossienne',
+    composer: 'Satie',
+    title: 'Gnossienne No. 1',
+    prime: 'public_gens/Gnossienne1_clean_prime.mid',
+    continuations: [
+      'public_gens/Gnossienne1_clean_0.mid',
+      'public_gens/Gnossienne1_clean_3.mid',
+    ],
+  },
+  {
+    id: 'clementi-opus36',
+    composer: 'Clementi',
+    title: 'Sonatina Op. 36 No. 1, Mvt. 3',
+    prime: 'public_gens/clementi_opus36_1_3_clean_prime.mid',
+    continuations: [
+      'public_gens/clementi_opus36_1_3_clean_0.mid',
+      'public_gens/clementi_opus36_1_3_clean_2.mid',
+    ],
+  },
+  {
+    id: 'beethoven-opus22',
+    composer: 'Beethoven',
+    title: 'Piano Sonata Op. 22 No. 1',
+    prime: 'public_gens/beethoven_opus22_1_clean_prime.mid',
+    continuations: [
+      'public_gens/beethoven_opus22_1_clean_0.mid',
+      'public_gens/beethoven_opus22_1_clean_3.mid',
+    ],
   },
   {
     id: 'korobeiniki',
     composer: 'Traditional',
-    title: 'Korobeiniki (Tetris Theme)',
-    original: 'midi/korobeiniki_clean.mid',
-    continuation: 'midi/korobeiniki_clean_0.mid',
+    title: 'Korobeiniki',
+    prime: 'public_gens/korobeiniki_clean_prime.mid',
+    continuations: [
+      'public_gens/korobeiniki_clean_0.mid',
+      'public_gens/korobeiniki_clean_1.mid',
+    ],
   },
   {
-    id: 'granados-goyescas',
-    composer: 'Granados',
-    title: 'Goyescas - Espanola',
-    original: 'midi/gra_esp_3.mid',
-    continuation: null,
+    id: 'mendelssohn-lieder',
+    composer: 'Mendelssohn',
+    title: 'Lieder ohne Worte, Book 1',
+    prime: "public_gens/'Lieder ohne Worte' Book 1 op1 n1_clean_prime.mid",
+    continuations: [
+      "public_gens/'Lieder ohne Worte' Book 1 op1 n1_clean_0.mid",
+      "public_gens/'Lieder ohne Worte' Book 1 op1 n1_clean_2.mid",
+    ],
   },
   {
-    id: 'beethoven-9th',
-    composer: 'Beethoven',
-    title: 'Symphony No. 9',
-    original: 'midi/beethoven9.mid',
-    continuation: null,
+    id: 'schubert-d894',
+    composer: 'Schubert',
+    title: 'Piano Sonata D. 894, Menuetto',
+    prime: 'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_prime.mid',
+    continuations: [
+      'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_0.mid',
+      'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_3.mid',
+    ],
+  },
+  {
+    id: 'diabelli-sonatina',
+    composer: 'Diabelli',
+    title: 'Sonatina Op. 151 No. 1, Mvt. 3',
+    prime: 'public_gens/Diabelli Sonatina op151 n1 3mov_clean_prime.mid',
+    continuations: [
+      'public_gens/Diabelli Sonatina op151 n1 3mov_clean_2.mid',
+      'public_gens/Diabelli Sonatina op151 n1 3mov_clean_3.mid',
+    ],
+  },
+  {
+    id: 'minuet-op33',
+    composer: 'Unknown',
+    title: 'Minuet, Op. 33 No. 11',
+    prime: 'public_gens/Minuet .Piano pieces -Songs & Dances- Opus 33, No.11_clean_prime.mid',
+    continuations: [
+      'public_gens/Minuet .Piano pieces -Songs & Dances- Opus 33, No.11_clean_0.mid',
+      'public_gens/Minuet .Piano pieces -Songs & Dances- Opus 33, No.11_clean_3.mid',
+    ],
   },
 ];
 
@@ -82,6 +122,7 @@ const TRACKS = [
 let player;
 let pianoRoll;
 let currentTrackId = null;
+let currentVariant = 0; // 0 = first continuation, 1 = second continuation
 
 // ── DOM refs ──
 
@@ -97,6 +138,7 @@ const $timeTotal = document.getElementById('time-total');
 const $progressFill = document.getElementById('progress-bar-fill');
 const $progressContainer = document.getElementById('progress-bar-container');
 const $nowPlaying = document.getElementById('now-playing');
+const $variantBtns = document.querySelectorAll('.variant-btn');
 
 // ── Helpers ──
 
@@ -117,11 +159,10 @@ function renderPlaylist() {
     div.className = 'track-item';
     div.dataset.id = track.id;
 
-    const hasCont = !!track.continuation;
     div.innerHTML = `
       <div class="track-composer">${track.composer}</div>
       <div class="track-title">${track.title}</div>
-      <div class="track-badge ${hasCont ? 'has-continuation' : 'solo'}">${hasCont ? 'original + continuation' : 'original only'}</div>
+      <div class="track-badge has-continuation">prime + continuation</div>
       <div class="track-playing-indicator">
         <span></span><span></span><span></span><span></span>
       </div>
@@ -137,6 +178,25 @@ function setActiveTrackUI(trackId, isPlaying) {
     el.classList.toggle('active', el.dataset.id === trackId);
     el.classList.toggle('playing', el.dataset.id === trackId && isPlaying);
   });
+}
+
+// ── Variant switching ──
+
+function updateVariantUI() {
+  $variantBtns.forEach((btn, i) => {
+    btn.classList.toggle('active', i === currentVariant);
+  });
+}
+
+async function selectVariant(variantIndex) {
+  if (variantIndex === currentVariant) return;
+  currentVariant = variantIndex;
+  updateVariantUI();
+
+  // Reload current track with new variant
+  if (currentTrackId) {
+    await selectTrack(currentTrackId);
+  }
 }
 
 // ── Track selection & playback ──
@@ -157,10 +217,8 @@ async function selectTrack(trackId) {
   $btnStop.disabled = false;
 
   try {
-    const { notes, duration } = await player.loadTrack(
-      track.original,
-      track.continuation
-    );
+    const combinedUrl = track.continuations[currentVariant];
+    const { notes, duration } = await player.loadTrack(combinedUrl, track.prime);
 
     pianoRoll.setNotes(notes, duration);
     $timeTotal.textContent = formatTime(duration);
@@ -212,6 +270,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render playlist
   renderPlaylist();
+
+  // Variant buttons
+  $variantBtns.forEach((btn, i) => {
+    btn.addEventListener('click', () => selectVariant(i));
+  });
+  updateVariantUI();
 
   // Play/Pause button
   $btnPlay.addEventListener('click', async () => {
