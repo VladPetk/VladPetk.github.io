@@ -633,6 +633,156 @@ section {
 }
 
 /* ══════════════════════════════════
+   ABOUT / FEATURE GRID
+   ══════════════════════════════════ */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.feature-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-lg);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.feature-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+}
+
+.feature-icon {
+  color: var(--accent-teal);
+  margin-bottom: var(--space-md);
+  opacity: 0.8;
+}
+
+.feature-card h3 {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+  letter-spacing: -0.3px;
+}
+
+.feature-card p {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ══════════════════════════════════
+   HOW IT WORKS / COMPONENT CARDS
+   ══════════════════════════════════ */
+
+.component-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.component-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg) var(--space-xl);
+  border-left: 3px solid var(--border-default);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.component-card:hover {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+.component-card--green { border-left-color: var(--accent-green); }
+.component-card--blue  { border-left-color: var(--accent-blue); }
+.component-card--red   { border-left-color: var(--accent-red); }
+
+.component-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.component-card-header h3 {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.component-card--green h3 { color: var(--accent-green); }
+.component-card--blue h3  { color: var(--accent-blue); }
+.component-card--red h3   { color: var(--accent-red); }
+
+.component-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-default);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.component-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+/* ══════════════════════════════════
+   PHILOSOPHY SECTION
+   ══════════════════════════════════ */
+
+.philosophy-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.philosophy-item {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+}
+
+.philosophy-marker {
+  width: 6px;
+  min-width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  margin-top: 8px;
+  opacity: 0.6;
+}
+
+.philosophy-item div {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.philosophy-item strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════
    DIAGRAMS SECTION
    ══════════════════════════════════ */
 
@@ -880,6 +1030,10 @@ footer p {
    ══════════════════════════════════ */
 
 @media (max-width: 900px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
   .player-container {
     flex-direction: column;
   }

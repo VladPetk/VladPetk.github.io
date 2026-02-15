@@ -5,7 +5,12 @@
       "Bash(wc:*)",
       "WebFetch(domain:cdn.jsdelivr.net)",
       "Bash(curl:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(gh api:*)",
+      "Bash(git remote get-url:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh.exe repo view:*)",
+      "Bash(where:*)"
     ]
   }
 }
