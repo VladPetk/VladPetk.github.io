@@ -6,16 +6,6 @@
 
 const TRACKS = [
   {
-    id: 'mozart-k545',
-    composer: 'Mozart',
-    title: 'Piano Sonata K. 545',
-    prime: 'public_gens/K545 Piano Sonata_clean_prime.mid',
-    continuations: [
-      'public_gens/K545 Piano Sonata_clean_0.mid',
-      'public_gens/K545 Piano Sonata_clean_1.mid',
-    ],
-  },
-  {
     id: 'chopin-etude',
     composer: 'Chopin',
     title: 'Etude Op. 10 No. 4',
@@ -103,6 +93,16 @@ const TRACKS = [
     continuations: [
       'public_gens/Diabelli Sonatina op151 n1 3mov_clean_2.mid',
       'public_gens/Diabelli Sonatina op151 n1 3mov_clean_3.mid',
+    ],
+  },
+  {
+    id: 'mozart-k545',
+    composer: 'Mozart',
+    title: 'Piano Sonata K. 545',
+    prime: 'public_gens/K545 Piano Sonata_clean_prime.mid',
+    continuations: [
+      'public_gens/K545 Piano Sonata_clean_0.mid',
+      'public_gens/K545 Piano Sonata_clean_1.mid',
     ],
   },
   {
