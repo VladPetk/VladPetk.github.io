@@ -11,8 +11,8 @@ const TRACKS = [
     title: 'Etude Op. 10 No. 4',
     prime: 'public_gens/chopin-etude-op10-no4_clean_prime.mid',
     continuations: [
-      'public_gens/chopin-etude-op10-no4_clean_0.mid',
       'public_gens/chopin-etude-op10-no4_clean_3.mid',
+      'public_gens/chopin-etude-op10-no4_clean_0.mid',
     ],
   },
   {
