@@ -26,13 +26,13 @@ const TRACKS = [
     ],
   },
   {
-    id: 'beethoven-hammerklavier',
-    composer: 'Beethoven',
-    title: 'Hammerklavier Sonata, Op. 106',
-    prime: "public_gens/Piano Sonata n29 Op106 ''Hammerklavier''_clean_prime.mid",
+    id: 'brahms-intermezzo',
+    composer: 'Brahms',
+    title: 'Intermezzo Op. 118 No. 2',
+    prime: 'public_gens/brahms-intermezzo-op118-no2_clean_prime.mid',
     continuations: [
-      "public_gens/Piano Sonata n29 Op106 ''Hammerklavier''_clean_0.mid",
-      "public_gens/Piano Sonata n29 Op106 ''Hammerklavier''_clean_1.mid",
+      'public_gens/brahms-intermezzo-op118-no2_clean_1.mid',
+      'public_gens/brahms-intermezzo-op118-no2_clean_3.mid',
     ],
   },
   {
@@ -42,7 +42,7 @@ const TRACKS = [
     prime: 'public_gens/Gnossienne1_clean_prime.mid',
     continuations: [
       'public_gens/Gnossienne1_clean_0.mid',
-      'public_gens/Gnossienne1_clean_3.mid',
+      'public_gens/Gnossienne1_clean_2.mid',
     ],
   },
   {
@@ -92,7 +92,7 @@ const TRACKS = [
     prime: 'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_prime.mid',
     continuations: [
       'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_0.mid',
-      'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_3.mid',
+      'public_gens/Piano Sonata in Sonata in G, No.3, D894 - Menuetto_ Allegro moderato_clean_1.mid',
     ],
   },
   {
@@ -106,13 +106,13 @@ const TRACKS = [
     ],
   },
   {
-    id: 'minuet-op33',
-    composer: 'Unknown',
-    title: 'Minuet, Op. 33 No. 11',
-    prime: 'public_gens/Minuet .Piano pieces -Songs & Dances- Opus 33, No.11_clean_prime.mid',
+    id: 'mozart-viennese',
+    composer: 'Mozart',
+    title: 'Viennese Sonatina K. 439b, Mvt. 2',
+    prime: 'public_gens/Viennese Sonatinas K439b n6 2mov_clean_prime.mid',
     continuations: [
-      'public_gens/Minuet .Piano pieces -Songs & Dances- Opus 33, No.11_clean_0.mid',
-      'public_gens/Minuet .Piano pieces -Songs & Dances- Opus 33, No.11_clean_3.mid',
+      'public_gens/Viennese Sonatinas K439b n6 2mov_clean_0.mid',
+      'public_gens/Viennese Sonatinas K439b n6 2mov_clean_1.mid',
     ],
   },
 ];
