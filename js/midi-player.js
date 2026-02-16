@@ -1,32 +1,37 @@
 /* ═══════════════════════════════════════════
    MIDI PLAYER — Tone.js playback engine
-   Loads MIDI files, synthesizes piano audio,
-   manages transport (play/pause/stop/seek).
+   Loads MIDI via @tonejs/midi, schedules notes
+   on Tone.Transport for sample-accurate timing,
+   synthesizes with Salamander grand piano.
    ═══════════════════════════════════════════ */
 
 class MidiPlayer {
   constructor() {
     this.sampler = null;
-    this.scheduledEvents = [];
+    this.scheduledIds = [];
     this.notes = [];
     this.duration = 0;
+    this.primeDuration = 0;
+    this.bpm = 120;
+    this.beatsPerBar = 4;
+
     this.isPlaying = false;
     this.isPaused = false;
-    this.startedAt = 0;     // Tone.now() when playback started
-    this.pausedAt = 0;      // elapsed seconds when paused
-    this.animFrameId = null;
+    this._pausedTime = 0;
+    this._animId = null;
 
     // Callbacks
-    this.onTimeUpdate = null;   // (currentTime, duration) => void
-    this.onPlayStateChange = null; // (isPlaying) => void
+    this.onTimeUpdate = null;
+    this.onPlayStateChange = null;
     this.onLoadStart = null;
     this.onLoadEnd = null;
 
     this._initSampler();
   }
 
+  /* ── Sampler Setup ── */
+
   _initSampler() {
-    // Use Salamander grand piano samples from Tone.js CDN
     this.sampler = new Tone.Sampler({
       urls: {
         A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3',
@@ -38,45 +43,41 @@ class MidiPlayer {
         A6: 'A6.mp3', C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3',
         A7: 'A7.mp3', C8: 'C8.mp3',
       },
-      release: 1,
+      release: 1.5,
       baseUrl: 'https://tonejs.github.io/audio/salamander/',
     }).toDestination();
   }
 
-  async waitForLoad() {
-    return Tone.loaded();
-  }
+  /* ── Track Loading ── */
 
-  /**
-   * Load a track: one combined file (prime+continuation) plus a prime-only file.
-   * The prime file's duration determines where to split original vs continuation.
-   * Returns { notes, duration } where notes have: midi, time, duration, velocity, source
-   */
   async loadTrack(combinedUrl, primeUrl) {
     if (this.onLoadStart) this.onLoadStart();
     this.stop();
 
     try {
-      // Load both MIDIs in parallel
       const [combinedMidi, primeMidi] = await Promise.all([
         Midi.fromUrl(combinedUrl),
         Midi.fromUrl(primeUrl),
       ]);
 
-      const primeDuration = primeMidi.duration;
-
-      // Extract all notes from the combined file,
-      // coloring based on whether they fall within the prime duration
-      const allNotes = this._extractNotesWithPrimeSplit(combinedMidi, primeDuration);
-
-      // Sort by time
-      allNotes.sort((a, b) => a.time - b.time);
-
-      this.notes = allNotes;
+      this.primeDuration = primeMidi.duration;
+      this.notes = this._extractNotes(combinedMidi, this.primeDuration);
       this.duration = combinedMidi.duration;
 
+      // Extract tempo and time signature from MIDI header
+      const tempos = combinedMidi.header.tempos;
+      this.bpm = tempos.length > 0 ? tempos[0].bpm : 120;
+      const timeSigs = combinedMidi.header.timeSignatures;
+      this.beatsPerBar = timeSigs.length > 0 ? timeSigs[0].timeSignature[0] : 4;
+
       if (this.onLoadEnd) this.onLoadEnd();
-      return { notes: this.notes, duration: this.duration };
+      return {
+        notes: this.notes,
+        duration: this.duration,
+        primeDuration: this.primeDuration,
+        bpm: this.bpm,
+        beatsPerBar: this.beatsPerBar,
+      };
     } catch (err) {
       console.error('Failed to load MIDI:', err);
       if (this.onLoadEnd) this.onLoadEnd();
@@ -84,118 +85,130 @@ class MidiPlayer {
     }
   }
 
-  _extractNotesWithPrimeSplit(midi, primeDuration) {
+  _extractNotes(midi, primeDuration) {
     const notes = [];
     midi.tracks.forEach((track, trackIdx) => {
       track.notes.forEach(note => {
-        // A note is "original" if it starts before the prime duration
-        const source = note.time < primeDuration ? 'original' : 'continuation';
         notes.push({
           midi: note.midi,
           time: note.time,
           duration: note.duration,
           velocity: note.velocity,
-          source: source,
-          trackIdx: trackIdx,
+          source: note.time < primeDuration ? 'original' : 'continuation',
+          trackIdx,
         });
       });
     });
-    return notes;
+    return notes.sort((a, b) => a.time - b.time);
   }
+
+  /* ── Transport Scheduling ──
+     Key insight: Schedule notes at ABSOLUTE Transport positions.
+     The Transport callback provides a precise audioTime parameter —
+     always pass it to triggerAttackRelease for sample-accurate playback.
+     Never rely on "now" or undefined timing. */
+
+  _scheduleFrom(fromTime) {
+    this._clearScheduled();
+
+    for (const note of this.notes) {
+      // Skip notes that have already fully elapsed
+      if (note.time + note.duration <= fromTime) continue;
+
+      const id = Tone.Transport.schedule((audioTime) => {
+        try {
+          this.sampler.triggerAttackRelease(
+            Tone.Frequency(note.midi, 'midi'),
+            Math.min(note.duration, 8),
+            audioTime,                          // Precise Web Audio time
+            this._velocityCurve(note.velocity),
+          );
+        } catch (e) {
+          // Sampler polyphony limit — silently skip
+        }
+      }, note.time); // Absolute position on Transport timeline
+
+      this.scheduledIds.push(id);
+    }
+  }
+
+  _clearScheduled() {
+    for (const id of this.scheduledIds) {
+      try { Tone.Transport.clear(id); } catch (e) {}
+    }
+    this.scheduledIds = [];
+    Tone.Transport.cancel();
+  }
+
+  _velocityCurve(v) {
+    // Slight compression for more natural dynamics
+    return Math.pow(v, 0.8) * 0.75;
+  }
+
+  /* ── Playback Controls ── */
 
   async play() {
     if (this.notes.length === 0) return;
 
     await Tone.start();
-    await this.waitForLoad();
+    await Tone.loaded();
 
-    if (this.isPaused) {
-      // Resume from paused position
-      this._scheduleNotes(this.pausedAt);
-      this.startedAt = Tone.now() - this.pausedAt;
-      this.isPaused = false;
-    } else {
-      this._scheduleNotes(0);
-      this.startedAt = Tone.now();
-    }
+    const startFrom = this.isPaused ? this._pausedTime : 0;
+
+    // Always: stop → clear → reschedule → start.
+    // This avoids stale events and Transport state confusion.
+    Tone.Transport.stop();
+    this._scheduleFrom(startFrom);
+    // Small lookahead (+0.02) gives the audio thread time to buffer
+    Tone.Transport.start('+0.02', startFrom);
 
     this.isPlaying = true;
+    this.isPaused = false;
     if (this.onPlayStateChange) this.onPlayStateChange(true);
-    this._startUpdateLoop();
-  }
-
-  _scheduleNotes(fromTime) {
-    // Clear any previously scheduled
-    this._clearScheduled();
-
-    const now = Tone.now();
-    this.notes.forEach(note => {
-      if (note.time < fromTime) return;
-
-      const delay = note.time - fromTime;
-      const freq = Tone.Frequency(note.midi, 'midi').toFrequency();
-      const dur = Math.min(note.duration, 4); // Cap at 4 seconds
-      const vel = note.velocity * 0.8; // Scale down slightly
-
-      const id = Tone.Transport.schedule(() => {
-        try {
-          this.sampler.triggerAttackRelease(freq, dur, undefined, vel);
-        } catch(e) {
-          // Silently ignore if sampler is busy
-        }
-      }, `+${delay}`);
-
-      this.scheduledEvents.push(id);
-    });
-
-    Tone.Transport.start();
-  }
-
-  _clearScheduled() {
-    this.scheduledEvents.forEach(id => {
-      try { Tone.Transport.clear(id); } catch(e) {}
-    });
-    this.scheduledEvents = [];
-    Tone.Transport.stop();
-    Tone.Transport.cancel();
+    this._startTicker();
   }
 
   pause() {
     if (!this.isPlaying) return;
-    this.pausedAt = this.getCurrentTime();
-    this._clearScheduled();
+
+    this._pausedTime = Tone.Transport.seconds;
+    Tone.Transport.pause();
     this.sampler.releaseAll();
+
     this.isPlaying = false;
     this.isPaused = true;
     if (this.onPlayStateChange) this.onPlayStateChange(false);
-    this._stopUpdateLoop();
+    this._stopTicker();
   }
 
   stop() {
+    Tone.Transport.stop();
     this._clearScheduled();
     if (this.sampler) this.sampler.releaseAll();
+
     this.isPlaying = false;
     this.isPaused = false;
-    this.pausedAt = 0;
-    this.startedAt = 0;
+    this._pausedTime = 0;
     if (this.onPlayStateChange) this.onPlayStateChange(false);
     if (this.onTimeUpdate) this.onTimeUpdate(0, this.duration);
-    this._stopUpdateLoop();
+    this._stopTicker();
   }
 
   seek(time) {
-    const wasPlaying = this.isPlaying;
-    this._clearScheduled();
-    this.sampler.releaseAll();
-
     time = Math.max(0, Math.min(time, this.duration));
+    const wasPlaying = this.isPlaying;
+
+    Tone.Transport.stop();
+    this.sampler.releaseAll();
+    this._scheduleFrom(time);
 
     if (wasPlaying) {
-      this._scheduleNotes(time);
-      this.startedAt = Tone.now() - time;
-      this._startUpdateLoop();
+      Tone.Transport.start('+0.02', time);
+      this.isPlaying = true;
+      this.isPaused = false;
+      this._startTicker();
     } else {
-      this.pausedAt = time;
+      this._pausedTime = time;
       this.isPaused = true;
       if (this.onTimeUpdate) this.onTimeUpdate(time, this.duration);
     }
@@ -203,32 +216,32 @@ class MidiPlayer {
 
   getCurrentTime() {
     if (this.isPlaying) {
-      return Math.min(Tone.now() - this.startedAt, this.duration);
+      return Math.min(Tone.Transport.seconds, this.duration);
     }
-    return this.pausedAt;
+    return this._pausedTime;
   }
 
-  _startUpdateLoop() {
-    this._stopUpdateLoop();
+  /* ── Update Loop ── */
+
+  _startTicker() {
+    this._stopTicker();
     const tick = () => {
       if (!this.isPlaying) return;
       const t = this.getCurrentTime();
       if (this.onTimeUpdate) this.onTimeUpdate(t, this.duration);
-
-      // Auto-stop at end
       if (t >= this.duration) {
         this.stop();
         return;
       }
-      this.animFrameId = requestAnimationFrame(tick);
+      this._animId = requestAnimationFrame(tick);
     };
-    this.animFrameId = requestAnimationFrame(tick);
+    this._animId = requestAnimationFrame(tick);
   }
 
-  _stopUpdateLoop() {
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
+  _stopTicker() {
+    if (this._animId) {
+      cancelAnimationFrame(this._animId);
+      this._animId = null;
     }
   }
 }

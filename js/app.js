@@ -218,9 +218,9 @@ async function selectTrack(trackId) {
 
   try {
     const combinedUrl = track.continuations[currentVariant];
-    const { notes, duration } = await player.loadTrack(combinedUrl, track.prime);
+    const { notes, duration, primeDuration, bpm, beatsPerBar } = await player.loadTrack(combinedUrl, track.prime);
 
-    pianoRoll.setNotes(notes, duration);
+    pianoRoll.setNotes(notes, duration, primeDuration, bpm, beatsPerBar);
     $timeTotal.textContent = formatTime(duration);
     $timeCurrent.textContent = '0:00';
     $progressFill.style.width = '0%';
