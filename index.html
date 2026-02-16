@@ -7,7 +7,7 @@
   <meta name="description" content="Interactive showcase of a MIDI autoregressive transformer with Self-Critical Sequence Training for classical piano music generation.">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
   <section id="player">
     <div class="section-header">
       <h2>Listen & Explore</h2>
-      <p class="section-desc">Select a piece to hear the prime and the model's continuation. Notes are color-coded: <span class="color-tag original">prime</span> vs <span class="color-tag continuation">continuation</span>. Switch between two different continuations to hear the model's variability.</p>
+      <p class="section-desc">Select a piece to hear the prime (the original) and the model's continuation. Notes are color-coded: <span class="color-tag original">prime</span> vs <span class="color-tag continuation">continuation</span>. Switch between two different continuations in the bottom right of the player to hear the model's variability.</p>
     </div>
 
     <div class="player-container">
@@ -98,7 +98,7 @@
   <section id="about">
     <div class="section-header">
       <h2>What is Continuo?</h2>
-      <p class="section-desc">Give it a few bars of MIDI, and it writes what comes next — maintaining your style, structure, and musical intent. Think of it as auto-complete for music.</p>
+      <p class="section-desc">Given an idea - from a few bars to a whole section - the model picks up where you left off and continues the piece, prioritizing the original style, structure, and musical intent. A sort of auto-complete for music.</p>
     </div>
 
     <div class="feature-grid">
@@ -107,21 +107,21 @@
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
         </div>
         <h3>Runs Locally</h3>
-        <p>No cloud API, no subscription, no internet required. The model is small enough to run on a single consumer GPU — or even a CPU.</p>
+        <p>No cloud API, no subscription, no internet required. The model is small enough to run on a single consumer GPU - or even a CPU.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="color: var(--accent-blue);">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
         </div>
         <h3>Continues, Not Composes</h3>
-        <p>It respects what you've already written. The continuation follows your key, your rhythm, your phrasing — extending ideas, not replacing them.</p>
+        <p>One of the main motivation behind the project is to create a model that continues your ideas, not one that composes new music. The continuation follows given key, rhythm, and phrasing - hopefully, extending and developing the original idea.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon" style="color: var(--accent-purple);">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
         </div>
         <h3>Works with MIDI</h3>
-        <p>Operates on quantized, grid-aligned MIDI — the same data your DAW uses natively. Output drops straight into your project with no cleanup needed.</p>
+        <p>Another big motivation. It operates on quantized, grid-aligned MIDIs - the same data DAWs use. Output can be dropped straight into your project with no cleanup needed.</p>
       </div>
     </div>
   </section>
@@ -362,10 +362,11 @@
           </g>
         </svg>
 
-        <div class="tooltip" id="arch-tooltip">
-          <div class="tt-title"></div>
-          <div class="tt-body"></div>
-        </div>
+      </div>
+
+      <div class="diagram-info" id="arch-info">
+        <span class="diagram-info-title" id="arch-info-title"></span>
+        <span class="diagram-info-body" id="arch-info-body">Hover over a node to see details</span>
       </div>
 
       <div class="legend">
@@ -595,10 +596,11 @@
           </g>
         </svg>
 
-        <div class="tooltip" id="scst-tooltip">
-          <div class="tt-title"></div>
-          <div class="tt-body"></div>
-        </div>
+      </div>
+
+      <div class="diagram-info" id="scst-info">
+        <span class="diagram-info-title" id="scst-info-title"></span>
+        <span class="diagram-info-body" id="scst-info-body">Hover over a node to see details</span>
       </div>
 
       <div class="legend">
@@ -660,7 +662,7 @@
       <div class="philosophy-item">
         <div class="philosophy-marker"></div>
         <div>
-          <strong>Fast generation.</strong> A small adapter means quick token generation, approaching interactive speeds for real-time creative workflows.
+          <strong>Fast generation.</strong> A small model means quick token generation (for local standards), allowing for use on systems without powerful GPUs or even CPUs.
         </div>
       </div>
       <div class="philosophy-item">
@@ -669,14 +671,51 @@
           <strong>Fine-tunable.</strong> Want it to write jazz instead of classical? Retrain the adapter on jazz data. The decoder stays frozen, so you only update a small fraction of the total parameters.
         </div>
       </div>
-      <div class="philosophy-item">
-        <div class="philosophy-marker"></div>
-        <div>
-          <strong>Portable adapters.</strong> Adapter weights are small enough to share, version, and swap. Different adapters for different styles, all running on the same decoder backbone.
-        </div>
+  </section>
+
+  <!-- ═══════ ROADMAP ═══════ -->
+  <section id="roadmap">
+    <div class="section-header">
+      <h2>What's Next</h2>
+      <p class="section-desc"> I am actively working on Continuo, albeit only on the weekends. Here's what's on the horizon.</p>
+    </div>
+
+    <div class="roadmap-grid">
+      <div class="roadmap-card">
+        <div class="roadmap-number">01</div>
+        <h3>Stronger Discriminator</h3>
+        <p>The current discriminator can become unstable after extended training. A SpanBERT-inspired architecture with specialized evaluation heads is in development, offering more precise and stable sequence-level feedback for fine-tuning.</p>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-number">02</div>
+        <h3>Downloadable App</h3>
+        <p>The model has been quantized via ONNX for efficient inference. After further speed optimizations and testing, quantized model weights will be released first, followed by a standalone application anyone can run.</p>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-number">03</div>
+        <h3>More Training Data</h3>
+        <p>Currently trained only on quantized MIDI, which excludes the majority of publicly available data. A planned approach will pre-train the decoder on both quantized and unquantized MIDI, then fine-tune and constrain generation to the quantized domain.</p>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-number">04</div>
+        <h3>Smarter Generation</h3>
+        <p>The finite-state machine currently enforces basic structural validity. Future improvements include repetition control, type-dependent temperature scaling, and more musically aware sampling strategies.</p>
       </div>
     </div>
   </section>
+
+  <!-- ═══════ STICKY MINI PLAYER ═══════ -->
+  <div class="mini-player" id="mini-player">
+    <button class="mini-player-btn" id="mini-btn-play" title="Play/Pause">
+      <svg class="mini-icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+      <svg class="mini-icon-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="5" y="3" width="4" height="18"/><rect x="15" y="3" width="4" height="18"/></svg>
+    </button>
+    <div class="mini-player-track" id="mini-player-track"></div>
+    <div class="mini-player-progress">
+      <div class="mini-player-progress-fill" id="mini-progress-fill"></div>
+    </div>
+    <span class="mini-player-time" id="mini-time">0:00</span>
+  </div>
 
   <!-- ═══════ FOOTER ═══════ -->
   <footer>
@@ -688,9 +727,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.js"></script>
 
   <!-- App Scripts -->
-  <script src="js/diagrams.js?v=4"></script>
-  <script src="js/midi-player.js?v=4"></script>
-  <script src="js/piano-roll.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/diagrams.js?v=6"></script>
+  <script src="js/midi-player.js?v=6"></script>
+  <script src="js/piano-roll.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

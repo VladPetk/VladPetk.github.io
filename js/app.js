@@ -224,7 +224,9 @@ async function selectTrack(trackId) {
     $timeTotal.textContent = formatTime(duration);
     $timeCurrent.textContent = '0:00';
     $progressFill.style.width = '0%';
-    $nowPlaying.textContent = `${track.composer} \u2014 ${track.title}`;
+    const trackLabel = `${track.composer} \u2014 ${track.title}`;
+    $nowPlaying.textContent = trackLabel;
+    $miniTrack.textContent = trackLabel;
 
     $loadingOverlay.classList.remove('visible');
 
@@ -242,15 +244,54 @@ async function selectTrack(trackId) {
 function updatePlayPauseIcon(isPlaying) {
   $iconPlay.style.display = isPlaying ? 'none' : 'block';
   $iconPause.style.display = isPlaying ? 'block' : 'none';
+  $miniIconPlay.style.display = isPlaying ? 'none' : 'block';
+  $miniIconPause.style.display = isPlaying ? 'block' : 'none';
   setActiveTrackUI(currentTrackId, isPlaying);
 }
 
 function onTimeUpdate(currentTime, duration) {
   $timeCurrent.textContent = formatTime(currentTime);
+  $miniTime.textContent = formatTime(currentTime);
   if (duration > 0) {
-    $progressFill.style.width = `${(currentTime / duration) * 100}%`;
+    const pct = `${(currentTime / duration) * 100}%`;
+    $progressFill.style.width = pct;
+    $miniProgressFill.style.width = pct;
   }
   pianoRoll.updateCursor(currentTime);
+}
+
+// ── Sticky mini-player ──
+
+const $miniPlayer = document.getElementById('mini-player');
+const $miniBtnPlay = document.getElementById('mini-btn-play');
+const $miniTrack = document.getElementById('mini-player-track');
+const $miniProgressFill = document.getElementById('mini-progress-fill');
+const $miniTime = document.getElementById('mini-time');
+const $miniIconPlay = $miniBtnPlay.querySelector('.mini-icon-play');
+const $miniIconPause = $miniBtnPlay.querySelector('.mini-icon-pause');
+
+function initMiniPlayer() {
+  // Show mini-player when main controls scroll out of view
+  const $controls = document.getElementById('controls');
+  const observer = new IntersectionObserver(([entry]) => {
+    const hasTrack = currentTrackId !== null;
+    $miniPlayer.classList.toggle('visible', !entry.isIntersecting && hasTrack);
+  }, { threshold: 0 });
+  observer.observe($controls);
+
+  $miniBtnPlay.addEventListener('click', async () => {
+    if (player.isPlaying) player.pause();
+    else await player.play();
+  });
+}
+
+function updateMiniPlayer(currentTime, duration, isPlaying) {
+  $miniTime.textContent = formatTime(currentTime);
+  if (duration > 0) {
+    $miniProgressFill.style.width = `${(currentTime / duration) * 100}%`;
+  }
+  $miniIconPlay.style.display = isPlaying ? 'none' : 'block';
+  $miniIconPause.style.display = isPlaying ? 'block' : 'none';
 }
 
 // ── Init ──
@@ -319,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Init diagrams
+  // Init diagrams & mini-player
   initDiagrams();
+  initMiniPlayer();
 });

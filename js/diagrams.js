@@ -5,12 +5,13 @@
    ═══════════════════════════════════════════ */
 
 class DiagramController {
-  constructor(svgSelector, tooltipSelector, containerSelector, config) {
+  constructor(svgSelector, infoSelector, containerSelector, config) {
     this.svg = document.querySelector(svgSelector);
-    this.tooltip = document.querySelector(tooltipSelector);
+    this.infoBar = document.querySelector(infoSelector);
+    this.infoTitle = this.infoBar.querySelector('.diagram-info-title');
+    this.infoBody = this.infoBar.querySelector('.diagram-info-body');
     this.container = document.querySelector(containerSelector);
-    this.ttTitle = this.tooltip.querySelector('.tt-title');
-    this.ttBody = this.tooltip.querySelector('.tt-body');
+    this.defaultText = this.infoBody.textContent;
 
     this.tooltips = config.tooltips;
     this.connections = config.connections;
@@ -42,7 +43,9 @@ class DiagramController {
     this.svg.querySelectorAll('.highlight-label').forEach(l => l.classList.remove('highlight-label'));
     this.svg.querySelectorAll('.highlight-zone').forEach(z => z.classList.remove('highlight-zone'));
     this.svg.querySelectorAll('.highlight-zone-label').forEach(l => l.classList.remove('highlight-zone-label'));
-    this.tooltip.classList.remove('visible');
+    this.infoTitle.textContent = '';
+    this.infoBody.textContent = this.defaultText;
+    this.infoBar.classList.remove('active');
   }
 
   attachNodeHovers() {
@@ -86,21 +89,12 @@ class DiagramController {
           }
         }
 
-        // Tooltip
+        // Info bar
         const info = this.tooltips[id];
         if (info) {
-          this.ttTitle.textContent = info.title;
-          this.ttBody.textContent = info.body;
-          const rect = node.getBoundingClientRect();
-          const cr = this.container.getBoundingClientRect();
-          let left = rect.right - cr.left + 14;
-          let top = rect.top - cr.top;
-          if (left + 300 > cr.width) left = rect.left - cr.left - 314;
-          if (top + 120 > cr.height) top = cr.height - 140;
-          if (top < 0) top = 8;
-          this.tooltip.style.left = left + 'px';
-          this.tooltip.style.top = top + 'px';
-          this.tooltip.classList.add('visible');
+          this.infoTitle.textContent = info.title;
+          this.infoBody.textContent = info.body;
+          this.infoBar.classList.add('active');
         }
       });
 
@@ -327,8 +321,8 @@ const scstConfig = {
 
 function initDiagrams() {
   // Initialize controllers
-  const archCtrl = new DiagramController('#arch-svg', '#arch-tooltip', '#arch-container', archConfig);
-  const scstCtrl = new DiagramController('#scst-svg', '#scst-tooltip', '#scst-container', scstConfig);
+  const archCtrl = new DiagramController('#arch-svg', '#arch-info', '#arch-container', archConfig);
+  const scstCtrl = new DiagramController('#scst-svg', '#scst-info', '#scst-container', scstConfig);
 
   // Tab switching
   document.querySelectorAll('.diagram-tab').forEach(tab => {

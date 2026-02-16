@@ -944,40 +944,44 @@ svg.diagram {
   transition: opacity 0.3s ease;
 }
 
-/* ── Tooltip ── */
+/* ── Diagram Info Bar ── */
 
-.tooltip {
-  position: absolute;
-  pointer-events: none;
-  background: rgba(30, 33, 41, 0.95);
-  border: 1px solid var(--border-hover);
-  border-radius: var(--radius-md);
-  padding: 14px 18px;
-  max-width: 300px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 100;
-  backdrop-filter: blur(12px);
+.diagram-info {
+  padding: var(--space-md) var(--space-lg);
+  min-height: 44px;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  border-top: 1px solid var(--border-default);
+  background: rgba(0,0,0,0.15);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  transition: color 0.2s ease;
+  flex-wrap: wrap;
 }
-.tooltip.visible {
-  opacity: 1;
-  transform: translateY(0);
+
+.diagram-info.active {
+  color: var(--text-secondary);
 }
-.tooltip .tt-title {
+
+.diagram-info-title {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-teal);
-  margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
-.tooltip .tt-body {
+
+.diagram-info-title:empty {
+  display: none;
+}
+
+.diagram-info-body {
   font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.55;
 }
 
 /* ── Legend ── */
@@ -1026,11 +1030,148 @@ footer p {
 }
 
 /* ══════════════════════════════════
+   ROADMAP SECTION
+   ══════════════════════════════════ */
+
+.roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-lg);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.roadmap-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg) var(--space-xl);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.roadmap-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+}
+
+.roadmap-number {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: var(--space-sm);
+  opacity: 0.5;
+}
+
+.roadmap-card h3 {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+  letter-spacing: -0.3px;
+}
+
+.roadmap-card p {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ══════════════════════════════════
+   STICKY MINI PLAYER
+   ══════════════════════════════════ */
+
+.mini-player {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  background: rgba(13,15,18,0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-default);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.mini-player.visible {
+  transform: translateY(0);
+}
+
+.mini-player-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mini-player-btn:hover {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.mini-player-track {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 200px;
+}
+
+.mini-player-progress {
+  flex: 1;
+  height: 3px;
+  background: var(--border-default);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-player-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-teal), var(--accent-blue));
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.mini-player-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ══════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════ */
 
 @media (max-width: 900px) {
   .feature-grid {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+  .roadmap-grid {
     grid-template-columns: 1fr;
     max-width: 480px;
   }
@@ -1061,11 +1202,29 @@ footer p {
     border-bottom-color: var(--accent-teal);
     border-left-color: transparent;
   }
+  .player-container {
+    height: auto;
+    max-height: none;
+  }
+  .piano-roll-wrapper {
+    min-height: 280px;
+  }
   .controls {
     flex-wrap: wrap;
+    padding: var(--space-sm) var(--space-md);
+  }
+  .controls-center {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .controls-right {
+    margin-left: auto;
   }
   .now-playing {
     display: none;
+  }
+  .mini-player-track {
+    max-width: 120px;
   }
 }
 
