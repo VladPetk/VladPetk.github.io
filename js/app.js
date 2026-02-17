@@ -6,16 +6,6 @@
 
 const TRACKS = [
   {
-    id: 'chopin-etude',
-    composer: 'Chopin',
-    title: 'Etude Op. 10 No. 4',
-    prime: 'public_gens/chopin-etude-op10-no4_clean_prime.mid',
-    continuations: [
-      'public_gens/chopin-etude-op10-no4_clean_3.mid',
-      'public_gens/chopin-etude-op10-no4_clean_0.mid',
-    ],
-  },
-  {
     id: 'brahms-intermezzo',
     composer: 'Brahms',
     title: 'Intermezzo Op. 118 No. 2',
@@ -23,6 +13,16 @@ const TRACKS = [
     continuations: [
       'public_gens/brahms-intermezzo-op118-no2_clean_1.mid',
       'public_gens/brahms-intermezzo-op118-no2_clean_3.mid',
+    ],
+  },
+  {
+    id: 'mozart-viennese',
+    composer: 'Mozart',
+    title: 'Viennese Sonatina K. 439b, Mvt. 2',
+    prime: 'public_gens/Viennese Sonatinas K439b n6 2mov_clean_prime.mid',
+    continuations: [
+      'public_gens/Viennese Sonatinas K439b n6 2mov_clean_0.mid',
+      'public_gens/Viennese Sonatinas K439b n6 2mov_clean_1.mid',
     ],
   },
   {
@@ -86,6 +86,16 @@ const TRACKS = [
     ],
   },
   {
+    id: 'chopin-etude',
+    composer: 'Chopin',
+    title: 'Etude Op. 10 No. 4',
+    prime: 'public_gens/chopin-etude-op10-no4_clean_prime.mid',
+    continuations: [
+      'public_gens/chopin-etude-op10-no4_clean_3.mid',
+      'public_gens/chopin-etude-op10-no4_clean_0.mid',
+    ],
+  },
+  {
     id: 'diabelli-sonatina',
     composer: 'Diabelli',
     title: 'Sonatina Op. 151 No. 1, Mvt. 3',
@@ -103,16 +113,6 @@ const TRACKS = [
     continuations: [
       'public_gens/K545 Piano Sonata_clean_0.mid',
       'public_gens/K545 Piano Sonata_clean_1.mid',
-    ],
-  },
-  {
-    id: 'mozart-viennese',
-    composer: 'Mozart',
-    title: 'Viennese Sonatina K. 439b, Mvt. 2',
-    prime: 'public_gens/Viennese Sonatinas K439b n6 2mov_clean_prime.mid',
-    continuations: [
-      'public_gens/Viennese Sonatinas K439b n6 2mov_clean_0.mid',
-      'public_gens/Viennese Sonatinas K439b n6 2mov_clean_1.mid',
     ],
   },
 ];
