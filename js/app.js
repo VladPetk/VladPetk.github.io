@@ -149,6 +149,23 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function trackAnalyticsEvent(eventName, details = {}) {
+  if (!window.goatcounter || typeof window.goatcounter.count !== 'function') return;
+
+  const normalize = (value) => String(value).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+  const normalizedEvent = normalize(eventName);
+  const detailSuffix = Object.entries(details)
+    .map(([key, value]) => `${normalize(key)}:${normalize(value)}`)
+    .join(',');
+  const eventSlug = detailSuffix ? `${normalizedEvent}:${detailSuffix}` : normalizedEvent;
+
+  window.goatcounter.count({
+    path: (path) => `${path}#${eventSlug}`,
+    title: `event:${eventSlug}`,
+    event: true,
+  });
+}
+
 // ── Playlist ──
 
 function renderPlaylist() {
@@ -230,6 +247,8 @@ async function selectTrack(trackId) {
 
     $loadingOverlay.classList.remove('visible');
 
+    trackAnalyticsEvent('track_select', { track: track.id, variant: currentVariant + 1 });
+
     // Auto-play
     await player.play();
   } catch (err) {
@@ -247,6 +266,10 @@ function updatePlayPauseIcon(isPlaying) {
   $miniIconPlay.style.display = isPlaying ? 'none' : 'block';
   $miniIconPause.style.display = isPlaying ? 'block' : 'none';
   setActiveTrackUI(currentTrackId, isPlaying);
+
+  if (currentTrackId) {
+    trackAnalyticsEvent(isPlaying ? 'play' : 'pause', { track: currentTrackId });
+  }
 }
 
 function onTimeUpdate(currentTime, duration) {
@@ -331,6 +354,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $btnStop.addEventListener('click', () => {
     player.stop();
     pianoRoll.updateCursor(0);
+    if (currentTrackId) {
+      trackAnalyticsEvent('stop', { track: currentTrackId });
+    }
   });
 
   // Progress bar seeking
